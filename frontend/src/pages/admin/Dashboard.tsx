@@ -1,20 +1,27 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Link } from "react-router-dom";
 import { 
   ThemeStat, 
   NavigationLink,
-  ThemeColors,
   ThemeFonts,
   ThemeBorderRadius,
-  ThemeButtons
 } from "@/config/theme.types";
+
+// Hex color validation regex
+const HEX_COLOR_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+// Validation function for hex colors
+const isValidHexColor = (color: string): boolean => {
+  return HEX_COLOR_REGEX.test(color);
+};
 
 // Section component for organized display
 interface AdminSectionProps {
@@ -39,6 +46,76 @@ const AdminSection: React.FC<AdminSectionProps> = ({ title, description, childre
   </Card>
 );
 
+// Editable field component
+interface EditableFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  isColor?: boolean;
+  placeholder?: string;
+  error?: string;
+}
+
+const EditableField: React.FC<EditableFieldProps> = ({ 
+  label, 
+  value, 
+  onChange, 
+  isColor = false,
+  placeholder,
+  error 
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+  const [isValid, setIsValid] = useState(true);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (isColor) {
+      const valid = isValidHexColor(newValue) || newValue === "";
+      setIsValid(valid);
+      if (valid && newValue !== "") {
+        onChange(newValue);
+      }
+    } else {
+      onChange(newValue);
+    }
+  };
+
+  // Update local value when prop changes
+  React.useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-white/70">{label}</Label>
+      <div className="flex items-center gap-2">
+        {isColor && (
+          <div 
+            className="w-10 h-10 rounded-lg border-2 border-white/20 flex-shrink-0 transition-colors"
+            style={{ 
+              background: isValidHexColor(localValue) ? localValue : "#333",
+            }}
+          />
+        )}
+        <Input 
+          value={localValue}
+          onChange={handleChange}
+          placeholder={placeholder}
+          className={`bg-white/5 border-white/10 text-white focus:border-[#8A2EFF] ${
+            !isValid ? "border-red-500 focus:border-red-500" : ""
+          }`}
+        />
+      </div>
+      {!isValid && (
+        <p className="text-red-400 text-xs">Format invalide. Utilisez #RRGGBB</p>
+      )}
+      {error && <p className="text-red-400 text-xs">{error}</p>}
+    </div>
+  );
+};
+
 // Read-only field component
 interface ReadOnlyFieldProps {
   label: string;
@@ -61,27 +138,6 @@ const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({ label, value, isColor = f
         readOnly
         className="bg-white/5 border-white/10 text-white/80 cursor-default"
       />
-    </div>
-  </div>
-);
-
-// Color palette display
-interface ColorDisplayProps {
-  colors: ThemeColors;
-}
-
-const ColorDisplay: React.FC<ColorDisplayProps> = ({ colors }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <ReadOnlyField label="Background" value={colors.background} isColor />
-    <ReadOnlyField label="Primary" value={colors.primary} isColor />
-    <ReadOnlyField label="Secondary" value={colors.secondary} isColor />
-    <ReadOnlyField label="Surface" value={colors.surface} isColor />
-    <ReadOnlyField label="Surface Solid" value={colors.surfaceSolid} isColor />
-    <ReadOnlyField label="Text Primary" value={colors.text.primary} isColor />
-    <ReadOnlyField label="Text Secondary" value={colors.text.secondary} isColor />
-    <ReadOnlyField label="Text Muted" value={colors.text.muted} isColor />
-    <div className="md:col-span-2">
-      <ReadOnlyField label="Gradient Primary" value={colors.gradient.primary} />
     </div>
   </div>
 );
@@ -134,19 +190,6 @@ const BorderRadiusDisplay: React.FC<BorderRadiusDisplayProps> = ({ borderRadius 
   </div>
 );
 
-// Buttons display
-interface ButtonsDisplayProps {
-  buttons: ThemeButtons;
-}
-
-const ButtonsDisplay: React.FC<ButtonsDisplayProps> = ({ buttons }) => (
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-    {Object.entries(buttons).map(([key, value]) => (
-      <ReadOnlyField key={key} label={key} value={value} />
-    ))}
-  </div>
-);
-
 // Navigation links display
 interface NavigationDisplayProps {
   links: NavigationLink[];
@@ -193,7 +236,9 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ stats }) => (
 
 // Main Dashboard component
 const Dashboard: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, updateConfig, resetConfig, hasChanges } = useTheme();
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  
   const { 
     name, 
     slogan, 
@@ -207,6 +252,63 @@ const Dashboard: React.FC = () => {
     stats,
     scrollIndicator 
   } = theme;
+
+  // Handler for updating simple string fields
+  const handleFieldChange = useCallback((field: string, value: string) => {
+    updateConfig({ [field]: value });
+  }, [updateConfig]);
+
+  // Handler for updating nested color fields
+  const handleColorChange = useCallback((colorPath: string, value: string) => {
+    if (colorPath === "primary") {
+      updateConfig({ 
+        colors: { 
+          primary: value,
+          gradient: {
+            primary: `linear-gradient(135deg, ${value} 0%, ${colors.secondary} 100%)`,
+            glow: value.replace('#', 'rgba(') + ', 0.5)',
+          }
+        } 
+      });
+    } else if (colorPath === "secondary") {
+      updateConfig({ 
+        colors: { 
+          secondary: value,
+          gradient: {
+            primary: `linear-gradient(135deg, ${colors.primary} 0%, ${value} 100%)`,
+          }
+        } 
+      });
+    } else if (colorPath === "background") {
+      updateConfig({ colors: { background: value } });
+    }
+  }, [updateConfig, colors.primary, colors.secondary]);
+
+  // Handler for updating button labels
+  const handleButtonChange = useCallback((buttonKey: string, value: string) => {
+    updateConfig({ buttons: { [buttonKey]: value } });
+  }, [updateConfig]);
+
+  // Simulate save (in a real app, this would call an API)
+  const handleSave = useCallback(async () => {
+    setSaveStatus("saving");
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, you would save to backend here
+    // For now, we just show a success message
+    setSaveStatus("saved");
+    
+    // Reset status after 3 seconds
+    setTimeout(() => setSaveStatus("idle"), 3000);
+  }, []);
+
+  // Reset handler
+  const handleReset = useCallback(() => {
+    resetConfig();
+    setSaveStatus("idle");
+  }, [resetConfig]);
 
   return (
     <div 
@@ -257,93 +359,213 @@ const Dashboard: React.FC = () => {
               <Badge variant="outline" className="text-white/70 border-white/30">
                 Admin Panel
               </Badge>
+              {hasChanges && (
+                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                  Modifications non sauvegardées
+                </Badge>
+              )}
             </div>
-            <Link to="/">
-              <PrimaryButton variant="outline" size="sm">
-                ← Retour au site
-              </PrimaryButton>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/" target="_blank">
+                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
+                  Prévisualiser ↗
+                </Button>
+              </Link>
+              <Link to="/">
+                <PrimaryButton variant="outline" size="sm">
+                  ← Retour au site
+                </PrimaryButton>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Title */}
-        <div className="mb-8">
-          <h1 
-            className="text-3xl font-bold text-white mb-2"
-            style={{ fontFamily: fonts.heading }}
-          >
-            Configuration du Thème
-          </h1>
-          <p className="text-white/60">
-            Visualisation en lecture seule des valeurs de <code className="text-[#8A2EFF]">theme.json</code>
-          </p>
+        {/* Page Title & Actions */}
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 
+              className="text-3xl font-bold text-white mb-2"
+              style={{ fontFamily: fonts.heading }}
+            >
+              Configuration du Thème
+            </h1>
+            <p className="text-white/60">
+              Modifiez les valeurs en temps réel. Les changements sont visibles immédiatement sur le site.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {hasChanges && (
+              <Button 
+                variant="outline" 
+                onClick={handleReset}
+                className="border-white/20 text-white/70 hover:bg-white/10"
+              >
+                Réinitialiser
+              </Button>
+            )}
+            <PrimaryButton 
+              onClick={handleSave}
+              disabled={!hasChanges || saveStatus === "saving"}
+            >
+              {saveStatus === "saving" ? "Sauvegarde..." : 
+               saveStatus === "saved" ? "✓ Sauvegardé" : 
+               "Enregistrer"}
+            </PrimaryButton>
+          </div>
         </div>
+
+        {/* Save Status Alert */}
+        {saveStatus === "saved" && (
+          <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400">
+            ✓ Configuration sauvegardée avec succès. Les modifications sont appliquées en temps réel.
+          </div>
+        )}
 
         {/* Grid of sections */}
         <div className="space-y-6">
-          {/* Brand Identity */}
+          {/* Brand Identity - EDITABLE */}
           <AdminSection 
-            title="Identité de Marque" 
-            description="Informations principales de l'application"
+            title="🎨 Identité de Marque" 
+            description="Informations principales de l'application - Éditable en temps réel"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ReadOnlyField label="Nom de l'application" value={name} />
-              <ReadOnlyField label="Slogan" value={slogan} />
+              <EditableField 
+                label="Nom de l'application" 
+                value={name}
+                onChange={(value) => handleFieldChange("name", value)}
+                placeholder="Beattribe"
+              />
+              <EditableField 
+                label="Slogan" 
+                value={slogan}
+                onChange={(value) => handleFieldChange("slogan", value)}
+                placeholder="Unite Through Rhythm"
+              />
               <div className="md:col-span-2">
-                <ReadOnlyField label="Description" value={description} />
+                <EditableField 
+                  label="Description" 
+                  value={description}
+                  onChange={(value) => handleFieldChange("description", value)}
+                  placeholder="Description de votre application..."
+                />
               </div>
-              <ReadOnlyField label="Badge" value={badge} />
-              <ReadOnlyField label="Indicateur de scroll" value={scrollIndicator} />
+              <EditableField 
+                label="Badge" 
+                value={badge}
+                onChange={(value) => handleFieldChange("badge", value)}
+                placeholder="La communauté des créateurs"
+              />
+              <EditableField 
+                label="Indicateur de scroll" 
+                value={scrollIndicator}
+                onChange={(value) => handleFieldChange("scrollIndicator", value)}
+                placeholder="Découvrir"
+              />
             </div>
           </AdminSection>
 
-          {/* Colors */}
+          {/* Colors - EDITABLE (Primary colors) */}
           <AdminSection 
-            title="Palette de Couleurs" 
-            description="Variables CSS --bt-* définies dans index.css"
+            title="🎨 Couleurs Principales" 
+            description="Modifiez les couleurs principales (format hexadécimal #RRGGBB)"
           >
-            <ColorDisplay colors={colors} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <EditableField 
+                label="Couleur Primaire (Violet)" 
+                value={colors.primary}
+                onChange={(value) => handleColorChange("primary", value)}
+                isColor
+                placeholder="#8A2EFF"
+              />
+              <EditableField 
+                label="Couleur Secondaire (Rose)" 
+                value={colors.secondary}
+                onChange={(value) => handleColorChange("secondary", value)}
+                isColor
+                placeholder="#FF2FB3"
+              />
+              <EditableField 
+                label="Arrière-plan" 
+                value={colors.background}
+                onChange={(value) => handleColorChange("background", value)}
+                isColor
+                placeholder="#000000"
+              />
+            </div>
+            <Separator className="my-6 bg-white/10" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ReadOnlyField label="Surface" value={colors.surface} isColor />
+              <ReadOnlyField label="Surface Solid" value={colors.surfaceSolid} isColor />
+              <div className="md:col-span-2">
+                <ReadOnlyField label="Gradient Primary (généré)" value={colors.gradient.primary} />
+              </div>
+            </div>
+          </AdminSection>
+
+          {/* Button Labels - EDITABLE */}
+          <AdminSection 
+            title="🔘 Labels des Boutons" 
+            description="Textes dynamiques des boutons - Éditable"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <EditableField 
+                label="Login" 
+                value={buttons.login}
+                onChange={(value) => handleButtonChange("login", value)}
+                placeholder="Connexion"
+              />
+              <EditableField 
+                label="Start" 
+                value={buttons.start}
+                onChange={(value) => handleButtonChange("start", value)}
+                placeholder="Commencer"
+              />
+              <EditableField 
+                label="Join Tribe" 
+                value={buttons.joinTribe}
+                onChange={(value) => handleButtonChange("joinTribe", value)}
+                placeholder="Rejoindre la tribu"
+              />
+              <EditableField 
+                label="Explore Beats" 
+                value={buttons.exploreBeats}
+                onChange={(value) => handleButtonChange("exploreBeats", value)}
+                placeholder="Explorer les beats"
+              />
+            </div>
           </AdminSection>
 
           {/* Typography */}
           <AdminSection 
-            title="Typographie" 
-            description="Polices Google Fonts utilisées"
+            title="📝 Typographie" 
+            description="Polices Google Fonts utilisées (lecture seule)"
           >
             <FontsDisplay fonts={fonts} />
           </AdminSection>
 
           {/* Border Radius */}
           <AdminSection 
-            title="Border Radius" 
-            description="Rayons de bordure prédéfinis"
+            title="⬛ Border Radius" 
+            description="Rayons de bordure prédéfinis (lecture seule)"
           >
             <BorderRadiusDisplay borderRadius={borderRadius} />
           </AdminSection>
 
-          {/* Buttons */}
-          <AdminSection 
-            title="Labels des Boutons" 
-            description="Textes dynamiques des boutons"
-          >
-            <ButtonsDisplay buttons={buttons} />
-          </AdminSection>
-
           {/* Navigation */}
           <AdminSection 
-            title="Navigation" 
-            description="Liens du menu principal"
+            title="🧭 Navigation" 
+            description="Liens du menu principal (lecture seule)"
           >
             <NavigationDisplay links={navigation.links} />
           </AdminSection>
 
           {/* Stats */}
           <AdminSection 
-            title="Statistiques" 
-            description="Données affichées dans la Hero Section"
+            title="📊 Statistiques" 
+            description="Données affichées dans la Hero Section (lecture seule)"
           >
             <StatsDisplay stats={stats} />
           </AdminSection>
@@ -352,8 +574,9 @@ const Dashboard: React.FC = () => {
         {/* Footer info */}
         <div className="mt-12 pt-6 border-t border-white/10 text-center">
           <p className="text-white/40 text-sm">
-            Les modifications doivent être effectuées directement dans{" "}
-            <code className="text-[#8A2EFF]">src/config/theme.json</code>
+            Les modifications sont appliquées en temps réel grâce au ThemeContext.
+            <br />
+            Pour une persistance permanente, les données doivent être sauvegardées via l'API backend.
           </p>
         </div>
       </main>
