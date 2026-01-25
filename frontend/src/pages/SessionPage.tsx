@@ -699,50 +699,23 @@ export const SessionPage: React.FC = () => {
             {/* Track Selection (Host only) */}
             {isHost && (
               <Card className="border-white/10 bg-white/5">
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-white text-lg">
                     Playlist
                   </CardTitle>
                   <CardDescription className="text-white/50">
-                    Sélectionnez une piste à partager
+                    Glissez pour réorganiser les titres
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {DEMO_TRACKS.map((track) => (
-                      <button
-                        key={track.id}
-                        onClick={() => handleTrackSelect(track)}
-                        className={`
-                          w-full p-3 rounded-lg text-left transition-all
-                          flex items-center gap-3
-                          ${selectedTrack.id === track.id 
-                            ? 'bg-white/10 border border-[#8A2EFF]/50' 
-                            : 'bg-white/5 border border-transparent hover:bg-white/10'
-                          }
-                        `}
-                      >
-                        <div 
-                          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, #8A2EFF 0%, #FF2FB3 100%)' }}
-                        >
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate">{track.title}</p>
-                          <p className="text-white/50 text-sm truncate">{track.artist}</p>
-                        </div>
-                        {selectedTrack.id === track.id && (
-                          <div 
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: '#8A2EFF' }}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                <CardContent className="pt-0">
+                  <PlaylistDnD
+                    tracks={tracks}
+                    selectedTrack={selectedTrack}
+                    onTrackSelect={handleTrackSelect}
+                    onReorder={handlePlaylistReorder}
+                    isHost={isHost}
+                    maxTracks={10}
+                  />
                 </CardContent>
               </Card>
             )}
