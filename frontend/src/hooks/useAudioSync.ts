@@ -28,7 +28,7 @@ export interface AudioSyncOptions {
 
 interface UseAudioSyncReturn {
   // Audio element ref
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   
   // Audio state
   audioState: AudioState;
