@@ -35,6 +35,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/session" element={<SessionPage />} />
+              <Route path="/session/:sessionId" element={<SessionPage />} />
               <Route 
                 path="/admin" 
                 element={
