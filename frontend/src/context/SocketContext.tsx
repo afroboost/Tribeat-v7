@@ -1,34 +1,22 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/Toast';
+import { 
+  supabase, 
+  isSupabaseConfigured, 
+  createSessionChannel, 
+  broadcastToSession, 
+  unsubscribeChannel,
+  RealtimePayload,
+  RealtimeEventType,
+  savePlaylist,
+  loadPlaylist,
+  PlaylistRecord,
+} from '@/lib/supabaseClient';
 
-// Event types for real-time communication
-export type SocketEventType = 
-  | 'CMD_MUTE_USER'
-  | 'CMD_UNMUTE_USER'
-  | 'CMD_EJECT_USER'
-  | 'CMD_VOLUME_CHANGE'
-  | 'SYNC_PLAYLIST'
-  | 'SYNC_PLAYBACK'
-  | 'USER_JOINED'
-  | 'USER_LEFT';
-
-export interface SocketEvent {
-  type: SocketEventType;
-  sessionId: string;
-  senderId: string;
-  targetUserId?: string;
-  payload?: unknown;
-  timestamp: number;
-}
-
-export interface MutePayload {
-  muted: boolean;
-}
-
-export interface VolumePayload {
-  volume: number;
-}
+// Re-export types for consumers
+export type { RealtimeEventType, RealtimePayload };
 
 export interface PlaylistPayload {
   tracks: Array<{
@@ -49,11 +37,12 @@ export interface PlaybackPayload {
 interface SocketContextValue {
   // Connection state
   isConnected: boolean;
+  isSupabaseMode: boolean;
   userId: string;
   sessionId: string | null;
   
   // Join/Leave
-  joinSession: (sessionId: string, userId: string, isHost: boolean) => void;
+  joinSession: (sessionId: string, oderId: string, isHost: boolean) => void;
   leaveSession: () => void;
   
   // Host Commands
@@ -66,6 +55,10 @@ interface SocketContextValue {
   syncPlaylist: (tracks: PlaylistPayload['tracks'], selectedTrackId: number) => void;
   syncPlayback: (isPlaying: boolean, currentTime: number, trackId: number) => void;
   
+  // Persistence
+  savePlaylistToDb: (tracks: PlaylistPayload['tracks'], selectedTrackId: number) => Promise<boolean>;
+  loadPlaylistFromDb: () => Promise<PlaylistRecord | null>;
+  
   // Event listeners
   onMuted: (callback: (muted: boolean) => void) => () => void;
   onEjected: (callback: () => void) => () => void;
@@ -76,7 +69,7 @@ interface SocketContextValue {
 
 const SocketContext = createContext<SocketContextValue | null>(null);
 
-// Generate unique user ID
+// Generate unique user ID (persisted in sessionStorage)
 function generateUserId(): string {
   const stored = sessionStorage.getItem('bt_user_id');
   if (stored) return stored;
@@ -90,7 +83,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const navigate = useNavigate();
   const { showToast } = useToast();
   
-  const channelRef = useRef<BroadcastChannel | null>(null);
+  // Refs for channels
+  const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  
+  // State
   const [isConnected, setIsConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [userId] = useState(generateUserId);
@@ -111,43 +108,21 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     playbackSync: new Set(),
   });
 
-  // Send event through BroadcastChannel
-  const sendEvent = useCallback((event: Omit<SocketEvent, 'timestamp'>) => {
-    if (!channelRef.current) return;
-    
-    const fullEvent: SocketEvent = {
-      ...event,
-      timestamp: Date.now(),
-    };
-    
-    console.log('[SOCKET OUT]', fullEvent.type, {
-      target: fullEvent.targetUserId,
-      session: fullEvent.sessionId,
-    });
-    
-    channelRef.current.postMessage(fullEvent);
-  }, []);
-
-  // Handle incoming events
-  const handleMessage = useCallback((event: MessageEvent<SocketEvent>) => {
-    const data = event.data;
-    
+  // Handle incoming messages (works for both Supabase and BroadcastChannel)
+  const handleMessage = useCallback((payload: RealtimePayload) => {
     // Ignore own messages
-    if (data.senderId === userId) return;
+    if (payload.senderId === userId) return;
     
-    // Ignore messages from other sessions
-    if (data.sessionId !== sessionId) return;
-    
-    console.log('[SOCKET IN]', data.type, {
-      from: data.senderId,
-      target: data.targetUserId,
-      latency: `${Date.now() - data.timestamp}ms`,
+    console.log('[REALTIME IN]', payload.type, {
+      from: payload.senderId,
+      target: payload.targetUserId,
+      latency: `${Date.now() - payload.timestamp}ms`,
     });
 
     // Handle targeted events (for specific user)
-    if (data.targetUserId && data.targetUserId !== userId) return;
+    if (payload.targetUserId && payload.targetUserId !== userId) return;
 
-    switch (data.type) {
+    switch (payload.type) {
       case 'CMD_MUTE_USER':
         listenersRef.current.muted.forEach(cb => cb(true));
         showToast('🔇 L\'hôte vous a mis en sourdine', 'warning');
@@ -161,137 +136,152 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'CMD_EJECT_USER':
         listenersRef.current.ejected.forEach(cb => cb());
         showToast('❌ Vous avez été exclu par l\'hôte', 'error');
-        // Redirect after short delay for toast visibility
         setTimeout(() => navigate('/'), 1500);
         break;
         
       case 'CMD_VOLUME_CHANGE':
-        const volPayload = data.payload as VolumePayload;
-        listenersRef.current.volumeChange.forEach(cb => cb(volPayload.volume));
+        const volData = payload.data as { volume: number };
+        listenersRef.current.volumeChange.forEach(cb => cb(volData.volume));
         break;
         
       case 'SYNC_PLAYLIST':
         if (!isHostRef.current) {
-          const plPayload = data.payload as PlaylistPayload;
-          listenersRef.current.playlistSync.forEach(cb => cb(plPayload));
+          const plData = payload.data as PlaylistPayload;
+          listenersRef.current.playlistSync.forEach(cb => cb(plData));
         }
         break;
         
       case 'SYNC_PLAYBACK':
         if (!isHostRef.current) {
-          const pbPayload = data.payload as PlaybackPayload;
-          listenersRef.current.playbackSync.forEach(cb => cb(pbPayload));
+          const pbData = payload.data as PlaybackPayload;
+          listenersRef.current.playbackSync.forEach(cb => cb(pbData));
         }
         break;
     }
-  }, [userId, sessionId, navigate, showToast]);
+  }, [userId, navigate, showToast]);
+
+  // Send message (auto-selects channel type)
+  const sendMessage = useCallback((type: RealtimeEventType, targetUserId?: string, data?: unknown) => {
+    const payload: RealtimePayload = {
+      type,
+      senderId: userId,
+      targetUserId,
+      data,
+      timestamp: Date.now(),
+    };
+
+    console.log('[REALTIME OUT]', type, { target: targetUserId });
+
+    // Send via Supabase if available
+    if (supabaseChannelRef.current) {
+      broadcastToSession(supabaseChannelRef.current, payload);
+    }
+    
+    // Also send via BroadcastChannel (for same-browser tabs)
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage(payload);
+    }
+  }, [userId]);
 
   // Join session
   const joinSession = useCallback((newSessionId: string, newUserId: string, isHost: boolean) => {
-    // Close existing channel
-    if (channelRef.current) {
-      channelRef.current.close();
+    // Close existing channels
+    if (supabaseChannelRef.current && supabase) {
+      unsubscribeChannel(supabaseChannelRef.current);
+      supabaseChannelRef.current = null;
     }
-    
-    // Create channel for this session
-    const channelName = `beattribe_session_${newSessionId}`;
-    channelRef.current = new BroadcastChannel(channelName);
-    channelRef.current.onmessage = handleMessage;
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.close();
+      broadcastChannelRef.current = null;
+    }
     
     setSessionId(newSessionId);
     isHostRef.current = isHost;
+
+    // Create Supabase Realtime channel if configured
+    if (isSupabaseConfigured) {
+      supabaseChannelRef.current = createSessionChannel(newSessionId, handleMessage);
+      console.log('[REALTIME] Connected via Supabase Realtime');
+    } else {
+      console.log('[REALTIME] Supabase not configured, using BroadcastChannel fallback');
+    }
+
+    // Always create BroadcastChannel as fallback (for same-browser testing)
+    const channelName = `beattribe_session_${newSessionId}`;
+    broadcastChannelRef.current = new BroadcastChannel(channelName);
+    broadcastChannelRef.current.onmessage = (event) => handleMessage(event.data);
+
     setIsConnected(true);
     
-    console.log('[SOCKET]', `Joined session ${newSessionId} as ${isHost ? 'HOST' : 'PARTICIPANT'}`);
+    console.log('[REALTIME]', `Joined session ${newSessionId} as ${isHost ? 'HOST' : 'PARTICIPANT'}`);
     
     // Announce joining
-    sendEvent({
-      type: 'USER_JOINED',
-      sessionId: newSessionId,
-      senderId: newUserId,
-      payload: { isHost },
-    });
-  }, [handleMessage, sendEvent]);
+    sendMessage('USER_JOINED', undefined, { isHost });
+  }, [handleMessage, sendMessage]);
 
   // Leave session
   const leaveSession = useCallback(() => {
-    if (channelRef.current && sessionId) {
-      sendEvent({
-        type: 'USER_LEFT',
-        sessionId,
-        senderId: userId,
-      });
-      channelRef.current.close();
-      channelRef.current = null;
+    if (sessionId) {
+      sendMessage('USER_LEFT');
+    }
+
+    if (supabaseChannelRef.current && supabase) {
+      unsubscribeChannel(supabaseChannelRef.current);
+      supabaseChannelRef.current = null;
+    }
+    
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.close();
+      broadcastChannelRef.current = null;
     }
     
     setSessionId(null);
     setIsConnected(false);
     isHostRef.current = false;
-  }, [sessionId, userId, sendEvent]);
+  }, [sessionId, sendMessage]);
 
   // Host commands
   const muteUser = useCallback((targetUserId: string) => {
-    if (!sessionId) return;
-    sendEvent({
-      type: 'CMD_MUTE_USER',
-      sessionId,
-      senderId: userId,
-      targetUserId,
-    });
-  }, [sessionId, userId, sendEvent]);
+    sendMessage('CMD_MUTE_USER', targetUserId);
+  }, [sendMessage]);
 
   const unmuteUser = useCallback((targetUserId: string) => {
-    if (!sessionId) return;
-    sendEvent({
-      type: 'CMD_UNMUTE_USER',
-      sessionId,
-      senderId: userId,
-      targetUserId,
-    });
-  }, [sessionId, userId, sendEvent]);
+    sendMessage('CMD_UNMUTE_USER', targetUserId);
+  }, [sendMessage]);
 
   const ejectUser = useCallback((targetUserId: string) => {
-    if (!sessionId) return;
-    sendEvent({
-      type: 'CMD_EJECT_USER',
-      sessionId,
-      senderId: userId,
-      targetUserId,
-    });
-  }, [sessionId, userId, sendEvent]);
+    sendMessage('CMD_EJECT_USER', targetUserId);
+  }, [sendMessage]);
 
   const setUserVolume = useCallback((targetUserId: string, volume: number) => {
-    if (!sessionId) return;
-    sendEvent({
-      type: 'CMD_VOLUME_CHANGE',
-      sessionId,
-      senderId: userId,
-      targetUserId,
-      payload: { volume } as VolumePayload,
-    });
-  }, [sessionId, userId, sendEvent]);
+    sendMessage('CMD_VOLUME_CHANGE', targetUserId, { volume });
+  }, [sendMessage]);
 
   // Sync commands
   const syncPlaylist = useCallback((tracks: PlaylistPayload['tracks'], selectedTrackId: number) => {
-    if (!sessionId || !isHostRef.current) return;
-    sendEvent({
-      type: 'SYNC_PLAYLIST',
-      sessionId,
-      senderId: userId,
-      payload: { tracks, selectedTrackId } as PlaylistPayload,
-    });
-  }, [sessionId, userId, sendEvent]);
+    if (!isHostRef.current) return;
+    sendMessage('SYNC_PLAYLIST', undefined, { tracks, selectedTrackId });
+  }, [sendMessage]);
 
   const syncPlayback = useCallback((isPlaying: boolean, currentTime: number, trackId: number) => {
-    if (!sessionId || !isHostRef.current) return;
-    sendEvent({
-      type: 'SYNC_PLAYBACK',
-      sessionId,
-      senderId: userId,
-      payload: { isPlaying, currentTime, trackId } as PlaybackPayload,
+    if (!isHostRef.current) return;
+    sendMessage('SYNC_PLAYBACK', undefined, { isPlaying, currentTime, trackId });
+  }, [sendMessage]);
+
+  // Database persistence
+  const savePlaylistToDb = useCallback(async (tracks: PlaylistPayload['tracks'], selectedTrackId: number): Promise<boolean> => {
+    if (!sessionId) return false;
+    return savePlaylist({
+      session_id: sessionId,
+      tracks,
+      selected_track_id: selectedTrackId,
     });
-  }, [sessionId, userId, sendEvent]);
+  }, [sessionId]);
+
+  const loadPlaylistFromDb = useCallback(async (): Promise<PlaylistRecord | null> => {
+    if (!sessionId) return null;
+    return loadPlaylist(sessionId);
+  }, [sessionId]);
 
   // Event listener registration
   const onMuted = useCallback((callback: (muted: boolean) => void) => {
@@ -322,14 +312,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (channelRef.current) {
-        channelRef.current.close();
+      if (supabaseChannelRef.current && supabase) {
+        unsubscribeChannel(supabaseChannelRef.current);
+      }
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
       }
     };
   }, []);
 
   const value: SocketContextValue = {
     isConnected,
+    isSupabaseMode: isSupabaseConfigured,
     userId,
     sessionId,
     joinSession,
@@ -340,6 +334,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setUserVolume,
     syncPlaylist,
     syncPlayback,
+    savePlaylistToDb,
+    loadPlaylistFromDb,
     onMuted,
     onEjected,
     onVolumeChange,
