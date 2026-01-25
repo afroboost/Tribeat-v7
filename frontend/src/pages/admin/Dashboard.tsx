@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/components/ui/Toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -85,6 +86,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
   // Update local value when prop changes
   React.useEffect(() => {
     setLocalValue(value);
+    setIsValid(true);
   }, [value]);
 
   return (
@@ -236,8 +238,9 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ stats }) => (
 
 // Main Dashboard component
 const Dashboard: React.FC = () => {
-  const { theme, updateConfig, resetConfig, hasChanges } = useTheme();
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const { theme, updateConfig, saveConfig, resetConfig, clearStoredConfig, hasChanges, isStoredConfig } = useTheme();
+  const { showToast } = useToast();
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   
   const { 
     name, 
@@ -289,26 +292,37 @@ const Dashboard: React.FC = () => {
     updateConfig({ buttons: { [buttonKey]: value } });
   }, [updateConfig]);
 
-  // Simulate save (in a real app, this would call an API)
+  // Save to LocalStorage
   const handleSave = useCallback(async () => {
     setSaveStatus("saving");
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // In a real implementation, you would save to backend here
-    // For now, we just show a success message
-    setSaveStatus("saved");
+    const success = saveConfig();
     
-    // Reset status after 3 seconds
-    setTimeout(() => setSaveStatus("idle"), 3000);
-  }, []);
+    if (success) {
+      showToast("Configuration sauvegardée dans le LocalStorage !", "success");
+    } else {
+      showToast("Erreur lors de la sauvegarde", "error");
+    }
+    
+    setSaveStatus("idle");
+  }, [saveConfig, showToast]);
 
-  // Reset handler
+  // Reset to current session values (discard unsaved changes)
   const handleReset = useCallback(() => {
     resetConfig();
-    setSaveStatus("idle");
-  }, [resetConfig]);
+    showToast("Modifications annulées - Retour aux valeurs par défaut", "warning");
+  }, [resetConfig, showToast]);
+
+  // Clear LocalStorage and reset to defaults
+  const handleClearStorage = useCallback(() => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer la configuration stockée et revenir aux valeurs par défaut ?")) {
+      clearStoredConfig();
+      showToast("Configuration LocalStorage supprimée", "warning");
+    }
+  }, [clearStoredConfig, showToast]);
 
   return (
     <div 
@@ -359,9 +373,14 @@ const Dashboard: React.FC = () => {
               <Badge variant="outline" className="text-white/70 border-white/30">
                 Admin Panel
               </Badge>
+              {isStoredConfig && (
+                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                  💾 Config stockée
+                </Badge>
+              )}
               {hasChanges && (
                 <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                  Modifications non sauvegardées
+                  ⚠️ Non sauvegardé
                 </Badge>
               )}
             </div>
@@ -393,34 +412,51 @@ const Dashboard: React.FC = () => {
               Configuration du Thème
             </h1>
             <p className="text-white/60">
-              Modifiez les valeurs en temps réel. Les changements sont visibles immédiatement sur le site.
+              Modifiez les valeurs en temps réel. Cliquez sur "Enregistrer" pour persister dans le LocalStorage.
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {isStoredConfig && (
+              <Button 
+                variant="outline" 
+                onClick={handleClearStorage}
+                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                🗑️ Effacer stockage
+              </Button>
+            )}
             {hasChanges && (
               <Button 
                 variant="outline" 
                 onClick={handleReset}
                 className="border-white/20 text-white/70 hover:bg-white/10"
               >
-                Réinitialiser
+                Annuler
               </Button>
             )}
             <PrimaryButton 
               onClick={handleSave}
               disabled={!hasChanges || saveStatus === "saving"}
             >
-              {saveStatus === "saving" ? "Sauvegarde..." : 
-               saveStatus === "saved" ? "✓ Sauvegardé" : 
-               "Enregistrer"}
+              {saveStatus === "saving" ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Sauvegarde...
+                </span>
+              ) : (
+                "💾 Enregistrer"
+              )}
             </PrimaryButton>
           </div>
         </div>
 
-        {/* Save Status Alert */}
-        {saveStatus === "saved" && (
-          <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400">
-            ✓ Configuration sauvegardée avec succès. Les modifications sont appliquées en temps réel.
+        {/* Storage Info */}
+        {isStoredConfig && (
+          <div className="mb-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400">
+            💾 Configuration chargée depuis le LocalStorage. Les modifications seront persistées après sauvegarde.
           </div>
         )}
 
@@ -574,9 +610,9 @@ const Dashboard: React.FC = () => {
         {/* Footer info */}
         <div className="mt-12 pt-6 border-t border-white/10 text-center">
           <p className="text-white/40 text-sm">
-            Les modifications sont appliquées en temps réel grâce au ThemeContext.
+            Les modifications sont stockées dans le LocalStorage du navigateur (clé: <code className="text-[#8A2EFF]">bt_theme_config</code>).
             <br />
-            Pour une persistance permanente, les données doivent être sauvegardées via l'API backend.
+            Utilisez "Effacer stockage" pour revenir aux valeurs par défaut de theme.json.
           </p>
         </div>
       </main>
