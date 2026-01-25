@@ -1,11 +1,13 @@
-import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AudioPlayer } from '@/components/audio/AudioPlayer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/components/ui/Toast';
+import { generateSessionId } from '@/hooks/useAudioSync';
 import type { AudioState, SyncState } from '@/hooks/useAudioSync';
 
 // Demo tracks for testing
@@ -48,15 +50,140 @@ const MOCK_PARTICIPANTS: Participant[] = [
   { id: '4', name: 'Emma L.', avatar: 'EL', isSynced: true },
 ];
 
+// Session creation view
+interface CreateSessionViewProps {
+  onCreateSession: () => void;
+  theme: ReturnType<typeof useTheme>['theme'];
+}
+
+const CreateSessionView: React.FC<CreateSessionViewProps> = ({ onCreateSession, theme }) => (
+  <div 
+    className="min-h-screen flex items-center justify-center p-4"
+    style={{ background: '#000000' }}
+  >
+    {/* Background Effects */}
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div 
+        className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 rounded-full opacity-20 blur-3xl"
+        style={{ background: `radial-gradient(circle, ${theme.colors.primary} 0%, transparent 70%)` }}
+      />
+      <div 
+        className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 rounded-full opacity-15 blur-3xl"
+        style={{ background: `radial-gradient(circle, ${theme.colors.secondary} 0%, transparent 70%)` }}
+      />
+    </div>
+
+    <Card className="w-full max-w-md border-white/10 bg-black/50 backdrop-blur-xl relative z-10">
+      <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <div 
+            className="w-20 h-20 rounded-2xl flex items-center justify-center"
+            style={{ background: theme.colors.gradient.primary }}
+          >
+            <svg viewBox="0 0 24 24" className="w-10 h-10 text-white" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+          </div>
+        </div>
+        <CardTitle 
+          className="text-2xl text-white"
+          style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Session d'écoute
+        </CardTitle>
+        <CardDescription className="text-white/50">
+          Créez une nouvelle session pour partager votre musique en temps réel
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button
+          onClick={onCreateSession}
+          className="w-full h-12 text-white border-none font-medium"
+          style={{
+            background: theme.colors.gradient.primary,
+            boxShadow: '0 4px 24px rgba(138, 46, 255, 0.35)',
+          }}
+        >
+          🎵 Créer une nouvelle session
+        </Button>
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-white/10" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-black px-2 text-white/40">ou</span>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <p className="text-white/50 text-sm mb-2">
+            Vous avez un lien de session ?
+          </p>
+          <p className="text-white/30 text-xs">
+            Collez l'URL dans votre navigateur pour rejoindre
+          </p>
+        </div>
+
+        <Link to="/" className="block">
+          <Button 
+            variant="outline" 
+            className="w-full border-white/20 text-white/70 hover:bg-white/10"
+          >
+            ← Retour à l'accueil
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  </div>
+);
+
 export const SessionPage: React.FC = () => {
+  const { sessionId: urlSessionId } = useParams<{ sessionId?: string }>();
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const { showToast } = useToast();
   
-  const [isHost, setIsHost] = useState(true);
+  // Determine if user is host based on URL
+  const [sessionId, setSessionId] = useState<string | null>(urlSessionId || null);
+  const isHost = useMemo(() => !urlSessionId, [urlSessionId]);
+  
   const [selectedTrack, setSelectedTrack] = useState(DEMO_TRACKS[0]);
   const [audioState, setAudioState] = useState<AudioState | null>(null);
   const [syncState, setSyncState] = useState<SyncState | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>(MOCK_PARTICIPANTS);
+  const [participants] = useState<Participant[]>(MOCK_PARTICIPANTS);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Generate session ID when creating new session
+  const handleCreateSession = useCallback(() => {
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
+    navigate(`/session/${newSessionId}`, { replace: true });
+    showToast('Session créée ! Partagez le lien avec vos amis.', 'success');
+  }, [navigate, showToast]);
+
+  // Get shareable session URL
+  const sessionUrl = useMemo(() => {
+    if (!sessionId) return '';
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/session/${sessionId}`;
+  }, [sessionId]);
+
+  // Copy session link to clipboard
+  const handleCopyLink = useCallback(async () => {
+    if (!sessionUrl) return;
+    
+    try {
+      await navigator.clipboard.writeText(sessionUrl);
+      setLinkCopied(true);
+      showToast('Lien copié dans le presse-papier !', 'success');
+      
+      // Reset copied state after 3 seconds
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (error) {
+      showToast('Erreur lors de la copie', 'error');
+    }
+  }, [sessionUrl, showToast]);
 
   // Handle audio state changes
   const handleAudioStateChange = useCallback((state: AudioState) => {
@@ -66,25 +193,22 @@ export const SessionPage: React.FC = () => {
   // Handle sync state changes
   const handleSyncStateChange = useCallback((state: SyncState) => {
     setSyncState(state);
-    if (state.isLive) {
+    if (state.isLive && isHost) {
       showToast('Session live démarrée !', 'success');
     }
-  }, [showToast]);
+  }, [showToast, isHost]);
 
-  // Toggle host/participant mode
-  const toggleMode = useCallback(() => {
-    setIsHost(prev => !prev);
-    showToast(
-      isHost ? 'Mode participant activé' : 'Mode hôte activé',
-      'default'
-    );
-  }, [isHost, showToast]);
-
-  // Select track
+  // Select track (host only)
   const handleTrackSelect = useCallback((track: typeof DEMO_TRACKS[0]) => {
+    if (!isHost) return;
     setSelectedTrack(track);
     showToast(`Piste sélectionnée: ${track.title}`, 'success');
-  }, [showToast]);
+  }, [showToast, isHost]);
+
+  // Show create session view if no sessionId and is potential host
+  if (!sessionId && !urlSessionId) {
+    return <CreateSessionView onCreateSession={handleCreateSession} theme={theme} />;
+  }
 
   return (
     <div 
@@ -127,7 +251,7 @@ export const SessionPage: React.FC = () => {
                   </svg>
                 </div>
                 <span 
-                  className="text-xl font-bold"
+                  className="text-xl font-bold hidden sm:block"
                   style={{
                     fontFamily: "'Space Grotesk', sans-serif",
                     background: theme.colors.gradient.primary,
@@ -138,20 +262,19 @@ export const SessionPage: React.FC = () => {
                   {theme.name}
                 </span>
               </Link>
-              <Badge variant="outline" className="text-white/70 border-white/30">
-                Session Live
+              
+              {/* Role Badge */}
+              <Badge 
+                className={isHost 
+                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                  : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                }
+              >
+                {isHost ? '👑 Hôte' : '👤 Participant'}
               </Badge>
             </div>
             
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMode}
-                className="text-white/70 hover:text-white"
-              >
-                {isHost ? '👑 Hôte' : '👤 Participant'}
-              </Button>
               <Link to="/">
                 <Button variant="outline" size="sm" className="border-white/20 text-white/70 hover:bg-white/10">
                   ← Retour
@@ -170,18 +293,58 @@ export const SessionPage: React.FC = () => {
             {/* Session Title */}
             <div>
               <h1 
-                className="text-3xl font-bold text-white mb-2"
+                className="text-2xl sm:text-3xl font-bold text-white mb-2"
                 style={{ fontFamily: "'Space Grotesk', sans-serif" }}
               >
                 Session d'écoute
               </h1>
-              <p className="text-white/60">
+              <p className="text-white/60 text-sm sm:text-base">
                 {isHost 
                   ? 'Vous êtes l\'hôte. Contrôlez la lecture pour tous les participants.'
                   : 'Mode écoute seule. La lecture est synchronisée avec l\'hôte.'
                 }
               </p>
             </div>
+
+            {/* Share Link Card (Host only) */}
+            {isHost && sessionId && (
+              <Card className="border-white/10 bg-white/5">
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <label className="text-white/50 text-xs mb-1 block">
+                        Lien de partage
+                      </label>
+                      <Input
+                        value={sessionUrl}
+                        readOnly
+                        className="bg-white/5 border-white/10 text-white/80 text-sm font-mono"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleCopyLink}
+                      className={`h-auto sm:h-[42px] sm:mt-5 ${
+                        linkCopied 
+                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                          : 'bg-white/10 text-white border-white/20'
+                      }`}
+                      variant="outline"
+                    >
+                      {linkCopied ? (
+                        <>✓ Copié</>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                          Copier le lien
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Audio Player */}
             <AudioPlayer
@@ -190,6 +353,7 @@ export const SessionPage: React.FC = () => {
               artist={selectedTrack.artist}
               coverArt={selectedTrack.coverArt}
               isHost={isHost}
+              sessionId={sessionId}
               onStateChange={handleAudioStateChange}
               onSyncUpdate={handleSyncStateChange}
             />
@@ -269,6 +433,12 @@ export const SessionPage: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
+                  <span className="text-white/60 text-sm">Session ID</span>
+                  <span className="text-white text-sm font-mono truncate max-w-[120px]">
+                    {sessionId || urlSessionId || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-white/60 text-sm">État</span>
                   <Badge 
                     className={syncState?.isLive 
@@ -343,8 +513,8 @@ export const SessionPage: React.FC = () => {
               <CardContent className="text-white/60 text-sm space-y-2">
                 {isHost ? (
                   <>
-                    <p>• Cliquez sur <strong>Go Live</strong> pour démarrer la diffusion</p>
-                    <p>• Utilisez les contrôles pour gérer la lecture</p>
+                    <p>• Partagez le lien de session avec vos amis</p>
+                    <p>• Cliquez sur <strong>Go Live</strong> pour démarrer</p>
                     <p>• Les participants se synchroniseront automatiquement</p>
                   </>
                 ) : (

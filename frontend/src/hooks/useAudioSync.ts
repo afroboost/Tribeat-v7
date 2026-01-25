@@ -18,12 +18,27 @@ export interface SyncState {
   isSynced: boolean;
   latency: number;
   lastSyncTimestamp: number;
+  sessionId: string | null;
+}
+
+// Broadcast payload type
+export interface BroadcastPayload {
+  type: 'STATE_UPDATE' | 'SYNC_REQUEST' | 'SYNC_RESPONSE';
+  sessionId: string;
+  timestamp: number;
+  data: {
+    isPlaying: boolean;
+    currentTime: number;
+    trackSrc?: string;
+  };
 }
 
 export interface AudioSyncOptions {
   isHost?: boolean;
+  sessionId?: string | null;
   onStateChange?: (state: AudioState) => void;
   onSyncUpdate?: (syncState: SyncState) => void;
+  onBroadcast?: (payload: BroadcastPayload) => void;
 }
 
 interface UseAudioSyncReturn {
@@ -49,6 +64,10 @@ interface UseAudioSyncReturn {
   startLiveSession: () => void;
   endLiveSession: () => void;
   
+  // Network simulation
+  broadcastState: () => void;
+  listenToState: (payload: BroadcastPayload) => void;
+  
   // Load audio
   loadAudio: (src: string) => void;
 }
@@ -70,19 +89,35 @@ const initialSyncState: SyncState = {
   isSynced: true,
   latency: 0,
   lastSyncTimestamp: 0,
+  sessionId: null,
 };
 
+// Generate unique session ID
+export function generateSessionId(): string {
+  const timestamp = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomPart}`.toUpperCase();
+}
+
 export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn {
-  const { isHost = true, onStateChange, onSyncUpdate } = options;
+  const { 
+    isHost = true, 
+    sessionId = null,
+    onStateChange, 
+    onSyncUpdate,
+    onBroadcast,
+  } = options;
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentTrackSrcRef = useRef<string>('');
   
   const [audioState, setAudioState] = useState<AudioState>(initialAudioState);
   const [syncState, setSyncState] = useState<SyncState>({
     ...initialSyncState,
     isHost,
+    sessionId,
   });
 
   // Update audio state and notify
@@ -109,6 +144,77 @@ export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn
     return Math.round(audioRef.current.currentTime * 1000);
   }, []);
 
+  // Broadcast state to participants (Network simulation)
+  const broadcastState = useCallback(() => {
+    if (!syncState.isHost || !syncState.sessionId) return;
+    
+    const payload: BroadcastPayload = {
+      type: 'STATE_UPDATE',
+      sessionId: syncState.sessionId,
+      timestamp: Date.now(),
+      data: {
+        isPlaying: audioState.isPlaying,
+        currentTime: audioRef.current?.currentTime || 0,
+        trackSrc: currentTrackSrcRef.current,
+      },
+    };
+    
+    // Log broadcast for debugging (simulated network)
+    console.log('[BROADCAST]', {
+      sessionId: payload.sessionId,
+      timestamp: payload.timestamp,
+      isPlaying: payload.data.isPlaying,
+      position: `${(payload.data.currentTime * 1000).toFixed(0)}ms`,
+    });
+    
+    // Notify callback if provided
+    onBroadcast?.(payload);
+    
+    updateSyncState({ lastSyncTimestamp: getTimestamp() });
+  }, [syncState.isHost, syncState.sessionId, audioState.isPlaying, getTimestamp, onBroadcast, updateSyncState]);
+
+  // Listen to state updates from host (Network simulation)
+  const listenToState = useCallback((payload: BroadcastPayload) => {
+    if (syncState.isHost) return; // Host doesn't listen
+    if (payload.sessionId !== syncState.sessionId) return; // Wrong session
+    
+    console.log('[RECEIVED]', {
+      type: payload.type,
+      sessionId: payload.sessionId,
+      position: `${(payload.data.currentTime * 1000).toFixed(0)}ms`,
+      isPlaying: payload.data.isPlaying,
+    });
+    
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    // Calculate latency
+    const networkLatency = Date.now() - payload.timestamp;
+    
+    // Sync position if difference > 150ms
+    const currentTime = audio.currentTime;
+    const targetTime = payload.data.currentTime + (networkLatency / 1000);
+    const diff = Math.abs(currentTime - targetTime);
+    
+    if (diff > 0.15) {
+      audio.currentTime = targetTime;
+      console.log('[SYNC]', `Adjusted by ${(diff * 1000).toFixed(0)}ms`);
+    }
+    
+    // Sync play/pause state
+    if (payload.data.isPlaying && audio.paused) {
+      audio.play().catch(console.error);
+    } else if (!payload.data.isPlaying && !audio.paused) {
+      audio.pause();
+    }
+    
+    updateSyncState({
+      isSynced: true,
+      latency: networkLatency,
+      lastSyncTimestamp: Date.now(),
+    });
+  }, [syncState.isHost, syncState.sessionId, updateSyncState]);
+
   // Sync to a specific timestamp (for participants)
   const syncToTimestamp = useCallback((timestamp: number) => {
     if (!audioRef.current || syncState.isHost) return;
@@ -132,6 +238,7 @@ export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn
   const loadAudio = useCallback((src: string) => {
     if (!audioRef.current) return;
     
+    currentTrackSrcRef.current = src;
     updateAudioState({ isLoading: true, error: null });
     audioRef.current.src = src;
     audioRef.current.load();
@@ -144,25 +251,40 @@ export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn
     try {
       await audioRef.current.play();
       updateAudioState({ isPlaying: true, error: null });
+      
+      // Broadcast state change if host
+      if (syncState.isHost && syncState.isLive) {
+        setTimeout(broadcastState, 50);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur de lecture';
       updateAudioState({ error: errorMessage, isPlaying: false });
     }
-  }, [updateAudioState]);
+  }, [updateAudioState, syncState.isHost, syncState.isLive, broadcastState]);
 
   // Pause audio
   const pause = useCallback(() => {
     if (!audioRef.current) return;
     audioRef.current.pause();
     updateAudioState({ isPlaying: false });
-  }, [updateAudioState]);
+    
+    // Broadcast state change if host
+    if (syncState.isHost && syncState.isLive) {
+      setTimeout(broadcastState, 50);
+    }
+  }, [updateAudioState, syncState.isHost, syncState.isLive, broadcastState]);
 
   // Seek to position
   const seek = useCallback((time: number) => {
     if (!audioRef.current || !syncState.isHost) return;
     audioRef.current.currentTime = time;
     updateAudioState({ currentTime: time });
-  }, [syncState.isHost, updateAudioState]);
+    
+    // Broadcast seek if live
+    if (syncState.isLive) {
+      setTimeout(broadcastState, 50);
+    }
+  }, [syncState.isHost, syncState.isLive, updateAudioState, broadcastState]);
 
   // Set volume (0-1)
   const setVolume = useCallback((volume: number) => {
@@ -183,24 +305,33 @@ export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn
   // Start live session (host only)
   const startLiveSession = useCallback(() => {
     if (!syncState.isHost) return;
+    
     updateSyncState({ isLive: true });
     
-    // Start broadcasting timestamps
+    // Start broadcasting state every 100ms
     syncIntervalRef.current = setInterval(() => {
-      const timestamp = getTimestamp();
-      // In a real app, this would broadcast to participants
-      updateSyncState({ lastSyncTimestamp: timestamp });
+      broadcastState();
     }, 100);
-  }, [syncState.isHost, getTimestamp, updateSyncState]);
+    
+    console.log('[SESSION]', `Live session started: ${syncState.sessionId}`);
+  }, [syncState.isHost, syncState.sessionId, broadcastState, updateSyncState]);
 
   // End live session
   const endLiveSession = useCallback(() => {
     updateSyncState({ isLive: false });
+    
     if (syncIntervalRef.current) {
       clearInterval(syncIntervalRef.current);
       syncIntervalRef.current = null;
     }
-  }, [updateSyncState]);
+    
+    console.log('[SESSION]', `Live session ended: ${syncState.sessionId}`);
+  }, [syncState.sessionId, updateSyncState]);
+
+  // Update sessionId when it changes
+  useEffect(() => {
+    updateSyncState({ sessionId, isHost });
+  }, [sessionId, isHost, updateSyncState]);
 
   // Time update loop for smooth progress
   useEffect(() => {
@@ -328,6 +459,8 @@ export function useAudioSync(options: AudioSyncOptions = {}): UseAudioSyncReturn
     syncToTimestamp,
     startLiveSession,
     endLiveSession,
+    broadcastState,
+    listenToState,
     loadAudio,
   };
 }
