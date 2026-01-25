@@ -481,7 +481,7 @@ export const SessionPage: React.FC = () => {
   }, [showToast, isHost]);
 
   // Select track (host only)
-  const handleTrackSelect = useCallback((track: typeof DEMO_TRACKS[0]) => {
+  const handleTrackSelect = useCallback((track: Track) => {
     if (!isHost) return;
     setSelectedTrack(track);
     showToast(`Piste sélectionnée: ${track.title}`, 'success');
