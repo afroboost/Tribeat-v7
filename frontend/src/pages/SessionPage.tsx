@@ -834,10 +834,20 @@ export const SessionPage: React.FC = () => {
                     Playlist
                   </CardTitle>
                   <CardDescription className="text-white/50">
-                    Glissez pour réorganiser les titres
+                    Glissez pour réorganiser • {tracks.length}/10 titres
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 space-y-4">
+                  {/* Track Uploader */}
+                  <TrackUploader
+                    sessionId={sessionId || ''}
+                    onTrackUploaded={handleTrackUploaded}
+                    currentTrackCount={tracks.length}
+                    maxTracks={10}
+                    disabled={!isHost}
+                  />
+                  
+                  {/* Playlist with DnD */}
                   <PlaylistDnD
                     tracks={tracks}
                     selectedTrack={selectedTrack}
@@ -846,6 +856,13 @@ export const SessionPage: React.FC = () => {
                     isHost={isHost}
                     maxTracks={10}
                   />
+                  
+                  {/* Supabase status */}
+                  {!isSupabaseConfigured && (
+                    <p className="text-xs text-yellow-400/60 text-center pt-2 border-t border-white/10">
+                      ⚠️ Mode démo (Supabase non configuré)
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
