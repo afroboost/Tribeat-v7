@@ -497,11 +497,28 @@ export const SessionPage: React.FC = () => {
     }
   }, [isHost, participantsState, socket, showToast]);
 
-  // Playlist reorder handler
+  // Playlist reorder handler (syncs via socket for participants)
   const handlePlaylistReorder = useCallback((newTracks: Track[]) => {
     setTracks(newTracks);
     showToast('Playlist réorganisée', 'success');
-  }, [showToast]);
+    
+    // Sync playlist to all participants
+    if (isHost) {
+      socket.syncPlaylist(newTracks, selectedTrack.id);
+      console.log('[SOCKET OUT] Playlist sync:', { trackCount: newTracks.length });
+    }
+  }, [showToast, isHost, socket, selectedTrack.id]);
+
+  // Track selection handler (syncs via socket)
+  const handleTrackSelectWithSync = useCallback((track: Track) => {
+    if (!isHost) return;
+    setSelectedTrack(track);
+    showToast(`Piste sélectionnée: ${track.title}`, 'success');
+    
+    // Sync to participants
+    socket.syncPlaylist(tracks, track.id);
+    console.log('[SOCKET OUT] Track selected:', { trackId: track.id });
+  }, [showToast, isHost, socket, tracks]);
 
   // Initialize - check for stored nickname
   useEffect(() => {
