@@ -182,6 +182,69 @@ h1, h2, h3, h4, h5, h6 {
   background: hsl(var(--bt-border-hover));
 }
 
+/* Ultra-thin scrollbars for playlist and participants */
+.playlist-scroll::-webkit-scrollbar,
+.participants-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.playlist-scroll::-webkit-scrollbar-track,
+.participants-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.playlist-scroll::-webkit-scrollbar-thumb,
+.participants-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--bt-radius-full);
+}
+
+.playlist-scroll::-webkit-scrollbar-thumb:hover,
+.participants-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar for Firefox */
+.playlist-scroll,
+.participants-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* Mini volume slider styling */
+.volume-slider-mini [data-slot="slider-track"] {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.volume-slider-mini [data-slot="slider-range"] {
+  background: linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%);
+}
+
+.volume-slider-mini [data-slot="slider-thumb"] {
+  width: 10px;
+  height: 10px;
+  border: none;
+  background: white;
+}
+
+/* Mic gain slider styling */
+.mic-gain-slider [data-slot="slider-track"] {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mic-gain-slider [data-slot="slider-range"] {
+  background: linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%);
+}
+
+.mic-gain-slider [data-slot="slider-thumb"] {
+  width: 12px;
+  height: 12px;
+  border: none;
+  background: white;
+}
+
 /* Selection color */
 ::selection {
   background: rgba(138, 46, 255, 0.3);
