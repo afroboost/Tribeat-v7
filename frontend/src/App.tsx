@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Header from "@/components/layout/Header";
 import HeroSection from "@/components/sections/HeroSection";
 import AdminDashboard from "@/pages/admin/Dashboard";
+import SessionPage from "@/pages/SessionPage";
 
 const HomePage: React.FC = () => {
   return (
@@ -33,6 +34,7 @@ const App: React.FC = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/session" element={<SessionPage />} />
               <Route 
                 path="/admin" 
                 element={
