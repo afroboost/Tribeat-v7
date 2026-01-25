@@ -474,10 +474,10 @@ export const SessionPage: React.FC = () => {
     if (isHost) {
       if (newMuted) {
         socket.muteUser(id);
-        showToast(`🔇 ${participant?.name} mis en sourdine`, 'info');
+        showToast(`🔇 ${participant?.name} mis en sourdine`, 'warning');
       } else {
         socket.unmuteUser(id);
-        showToast(`🔊 ${participant?.name} réactivé`, 'info');
+        showToast(`🔊 ${participant?.name} réactivé`, 'success');
       }
       console.log('[SOCKET OUT] Mute toggle:', { targetId: id, muted: newMuted });
     }
