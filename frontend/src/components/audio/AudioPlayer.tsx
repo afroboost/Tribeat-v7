@@ -16,6 +16,7 @@ interface AudioPlayerProps {
   artist?: string;
   coverArt?: string;
   isHost?: boolean;
+  sessionId?: string | null;
   onStateChange?: (state: AudioState) => void;
   onSyncUpdate?: (syncState: SyncState) => void;
   className?: string;
@@ -27,6 +28,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   artist = 'Artiste inconnu',
   coverArt,
   isHost = true,
+  sessionId = null,
   onStateChange,
   onSyncUpdate,
   className = '',
@@ -44,7 +46,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     startLiveSession,
     endLiveSession,
     loadAudio,
-  } = useAudioSync({ isHost, onStateChange, onSyncUpdate });
+  } = useAudioSync({ isHost, sessionId, onStateChange, onSyncUpdate });
 
   const [showVolume, setShowVolume] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
