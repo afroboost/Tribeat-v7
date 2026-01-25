@@ -202,16 +202,11 @@ metadata:
   run_ui: true
 
 test_plan:
-  current_focus:
-    - "Admin Panel Access"
+  current_focus: []
+  stuck_tasks:
     - "Live Theme Editing - Slogan"
-    - "Color Editing - Primary Color"
-    - "Button Labels Editing"
-    - "Save & Reset Functionality"
-    - "Validation - Invalid Hex Color"
-  stuck_tasks: []
-  test_all: true
-  test_priority: "high_first"
+  test_all: false
+  test_priority: "stuck_first"
 
 agent_communication:
   - agent: "testing"
