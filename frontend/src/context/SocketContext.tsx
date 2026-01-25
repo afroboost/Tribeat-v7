@@ -150,12 +150,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     switch (data.type) {
       case 'CMD_MUTE_USER':
         listenersRef.current.muted.forEach(cb => cb(true));
-        showToast('🔇 L\'hôte vous a mis en sourdine', 'info');
+        showToast('🔇 L\'hôte vous a mis en sourdine', 'warning');
         break;
         
       case 'CMD_UNMUTE_USER':
         listenersRef.current.muted.forEach(cb => cb(false));
-        showToast('🔊 L\'hôte a réactivé votre son', 'info');
+        showToast('🔊 L\'hôte a réactivé votre son', 'success');
         break;
         
       case 'CMD_EJECT_USER':
