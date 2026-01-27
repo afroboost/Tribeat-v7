@@ -236,7 +236,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Leave session
   const leaveSession = useCallback(() => {
-    if (sessionId) {
+    if (sessionId && isSupabaseConfigured) {
       sendMessage('USER_LEFT');
     }
 
@@ -245,13 +245,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       supabaseChannelRef.current = null;
     }
     
-    if (broadcastChannelRef.current) {
-      broadcastChannelRef.current.close();
-      broadcastChannelRef.current = null;
-    }
-    
     setSessionId(null);
     setIsConnected(false);
+    setConnectionStatus('disconnected');
+    setConnectionError(null);
     isHostRef.current = false;
   }, [sessionId, sendMessage]);
 
