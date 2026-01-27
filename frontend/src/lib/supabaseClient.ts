@@ -33,16 +33,17 @@ export interface UploadResult {
 
 /**
  * Upload an audio file to Supabase Storage
+ * Uses direct fetch to avoid "body stream already read" error
  */
 export async function uploadAudioFile(
   file: File,
   sessionId: string,
   onProgress?: (progress: number) => void
 ): Promise<UploadResult> {
-  if (!supabase) {
+  if (!supabase || !supabaseUrl || !supabaseAnonKey) {
     return { 
       success: false, 
-      error: 'Supabase non configuré. Ajoutez vos clés API dans .env.local' 
+      error: 'Supabase non configuré. Ajoutez vos clés API dans .env' 
     };
   }
 
@@ -63,36 +64,98 @@ export async function uploadAudioFile(
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filePath = `${sessionId}/${timestamp}_${sanitizedName}`;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
+    console.log('[SUPABASE STORAGE] Starting upload:', { 
+      bucket: AUDIO_BUCKET, 
+      path: filePath,
+      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+    });
+
+    // Use direct fetch to avoid SDK stream issues
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/${AUDIO_BUCKET}/${filePath}`;
+    
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey,
+        'Content-Type': file.type || 'audio/mpeg',
+        'x-upsert': 'false',
+      },
+      body: file,
+    });
+
+    // Read response only once
+    const responseText = await response.text();
+    let responseData: { error?: string; message?: string; statusCode?: string; Key?: string } = {};
+    
+    try {
+      if (responseText) {
+        responseData = JSON.parse(responseText);
+      }
+    } catch {
+      // Response might not be JSON
+      console.log('[SUPABASE STORAGE] Response:', responseText);
+    }
+
+    if (!response.ok) {
+      const errorMessage = responseData.message || responseData.error || `Erreur HTTP ${response.status}`;
+      console.error('[SUPABASE STORAGE] Upload failed:', {
+        status: response.status,
+        error: errorMessage,
+        hint: response.status === 404 
+          ? '⚠️ Le bucket "audio-tracks" n\'existe pas. Créez-le dans Supabase Dashboard > Storage'
+          : response.status === 403
+          ? '⚠️ Permissions RLS insuffisantes. Vérifiez les policies du bucket.'
+          : ''
       });
 
-    if (error) {
-      console.error('[SUPABASE] Upload error:', error);
-      return { success: false, error: error.message };
+      // Provide helpful error messages
+      if (response.status === 404) {
+        return { 
+          success: false, 
+          error: 'Bucket "audio-tracks" introuvable. Créez-le dans Supabase Dashboard.' 
+        };
+      }
+      if (response.status === 403) {
+        return { 
+          success: false, 
+          error: 'Permission refusée. Activez l\'accès public dans les policies du bucket.' 
+        };
+      }
+      if (response.status === 413) {
+        return { 
+          success: false, 
+          error: 'Fichier trop volumineux pour Supabase (limite dépassée).' 
+        };
+      }
+      
+      return { success: false, error: errorMessage };
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(AUDIO_BUCKET)
-      .getPublicUrl(data.path);
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${AUDIO_BUCKET}/${filePath}`;
 
-    console.log('[SUPABASE] Upload success:', urlData.publicUrl);
+    console.log('[SUPABASE STORAGE] ✅ Upload success:', publicUrl);
 
     return {
       success: true,
-      url: urlData.publicUrl,
-      path: data.path,
+      url: publicUrl,
+      path: filePath,
     };
   } catch (err) {
-    console.error('[SUPABASE] Upload exception:', err);
+    console.error('[SUPABASE STORAGE] Exception:', err);
+    
+    // Network errors
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      return { 
+        success: false, 
+        error: 'Erreur réseau. Vérifiez votre connexion internet.' 
+      };
+    }
+    
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Erreur inconnue' 
+      error: err instanceof Error ? err.message : 'Erreur inconnue lors de l\'upload' 
     };
   }
 }
