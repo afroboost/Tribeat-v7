@@ -327,15 +327,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (supabaseChannelRef.current && supabase) {
         unsubscribeChannel(supabaseChannelRef.current);
       }
-      if (broadcastChannelRef.current) {
-        broadcastChannelRef.current.close();
-      }
     };
   }, []);
 
   const value: SocketContextValue = {
     isConnected,
     isSupabaseMode: isSupabaseConfigured,
+    connectionStatus,
+    connectionMode,
+    connectionError,
     userId,
     sessionId,
     joinSession,
