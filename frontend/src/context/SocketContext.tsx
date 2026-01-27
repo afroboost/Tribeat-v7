@@ -232,6 +232,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isSupabaseConfigured) {
       sendMessage('USER_JOINED', undefined, { isHost });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleMessage, sendMessage]);
 
   // Leave session
