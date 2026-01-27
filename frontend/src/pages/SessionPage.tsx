@@ -383,6 +383,7 @@ export const SessionPage: React.FC = () => {
         socket.leaveSession();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, socket.userId, nickname, isHost]);
 
   // Listen for remote mute commands (for participants)
