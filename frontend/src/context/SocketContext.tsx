@@ -119,16 +119,17 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     playbackSync: new Set(),
   });
 
-  // Handle incoming messages (works for both Supabase and BroadcastChannel)
+  // Debug logging - only in development
+  const isDev = process.env.NODE_ENV === 'development';
+
+  // Handle incoming messages
   const handleMessage = useCallback((payload: RealtimePayload) => {
     // Ignore own messages
     if (payload.senderId === userId) return;
     
-    console.log('[REALTIME IN]', payload.type, {
-      from: payload.senderId,
-      target: payload.targetUserId,
-      latency: `${Date.now() - payload.timestamp}ms`,
-    });
+    if (isDev) {
+      console.log('[REALTIME IN]', payload.type);
+    }
 
     // Handle targeted events (for specific user)
     if (payload.targetUserId && payload.targetUserId !== userId) return;
@@ -169,7 +170,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
         break;
     }
-  }, [userId, navigate, showToast]);
+  }, [userId, navigate, showToast, isDev]);
 
   // Send message via Supabase Realtime only
   const sendMessage = useCallback((type: RealtimeEventType, targetUserId?: string, data?: unknown) => {
