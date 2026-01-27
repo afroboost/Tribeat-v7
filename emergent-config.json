@@ -1,0 +1,53 @@
+{
+  "$schema": "https://emergent.sh/schemas/config.json",
+  "name": "beattribe",
+  "displayName": "Beattribe - Unite Through Rhythm",
+  "description": "Application d'écoute musicale synchronisée en temps réel",
+  "version": "1.0.0",
+  "framework": "react",
+  "buildCommand": "cd frontend && yarn build",
+  "outputDirectory": "frontend/build",
+  "installCommand": "cd frontend && yarn install",
+  "environmentVariables": {
+    "required": [],
+    "optional": [
+      {
+        "key": "REACT_APP_SUPABASE_URL",
+        "description": "URL du projet Supabase (ex: https://xxx.supabase.co)",
+        "hint": "Trouvez cette valeur dans Settings > API de votre projet Supabase"
+      },
+      {
+        "key": "REACT_APP_SUPABASE_ANON_KEY",
+        "description": "Clé publique anon de Supabase",
+        "hint": "Trouvez cette valeur dans Settings > API > anon public"
+      },
+      {
+        "key": "REACT_APP_SUPABASE_BUCKET",
+        "description": "Nom du bucket Storage pour les fichiers audio",
+        "default": "audio-tracks"
+      }
+    ]
+  },
+  "features": {
+    "realtimeSync": {
+      "enabled": true,
+      "provider": "supabase",
+      "fallback": "local-demo"
+    },
+    "fileUpload": {
+      "enabled": true,
+      "provider": "supabase-storage",
+      "fallback": "local-blob"
+    }
+  },
+  "healthCheck": {
+    "path": "/",
+    "expectedStatus": 200
+  },
+  "notes": [
+    "L'application fonctionne en Mode Démo sans clés Supabase",
+    "Les uploads sont simulés localement en mode démo",
+    "La synchronisation multi-appareils nécessite Supabase Realtime",
+    "Pour activer toutes les fonctionnalités, configurez les variables Supabase"
+  ]
+}
