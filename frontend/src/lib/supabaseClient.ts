@@ -20,6 +20,34 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 // Storage bucket name
 export const AUDIO_BUCKET = storageBucket;
 
+// Log RLS configuration instructions to console
+export function logBucketConfigInstructions() {
+  console.log(`
+╔══════════════════════════════════════════════════════════════════╗
+║  SUPABASE STORAGE - Configuration requise pour le bucket         ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  1. Créez le bucket "audio-tracks" :                             ║
+║     → Dashboard > Storage > New Bucket                           ║
+║     → Name: audio-tracks                                         ║
+║     → Public: OUI                                                ║
+║                                                                  ║
+║  2. Ajoutez la policy pour autoriser les uploads (SQL Editor) :  ║
+║                                                                  ║
+║     CREATE POLICY "Allow public uploads"                         ║
+║     ON storage.objects FOR INSERT                                ║
+║     TO anon                                                      ║
+║     WITH CHECK (bucket_id = 'audio-tracks');                     ║
+║                                                                  ║
+║     CREATE POLICY "Allow public read"                            ║
+║     ON storage.objects FOR SELECT                                ║
+║     TO anon                                                      ║
+║     USING (bucket_id = 'audio-tracks');                          ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+  `);
+}
+
 // ============================================
 // STORAGE FUNCTIONS
 // ============================================
