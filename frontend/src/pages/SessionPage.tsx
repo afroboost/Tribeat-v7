@@ -931,21 +931,25 @@ export const SessionPage: React.FC = () => {
                   <Badge 
                     className={socket.isSupabaseMode
                       ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                      : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
                     }
+                    data-testid="sync-status-badge"
                   >
-                    {socket.isSupabaseMode ? 'Supabase' : 'Local'}
+                    {socket.isSupabaseMode ? '✓ Cloud' : '⚡ Démo'}
                   </Badge>
                 </div>
                 
-                {/* Connection error message */}
-                {socket.connectionError && !socket.isSupabaseMode && (
-                  <div className="pt-3 mt-3 border-t border-white/10">
-                    <div className="flex items-start gap-2 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                      <span className="text-yellow-400 text-sm">⚠️</span>
-                      <p className="text-yellow-400/80 text-xs leading-relaxed">
-                        Mode Local - Backend non connecté. La synchronisation multi-appareils n'est pas disponible.
-                      </p>
+                {/* Demo mode indicator - styled and non-intrusive */}
+                {!socket.isSupabaseMode && (
+                  <div className="pt-3 mt-3 border-t border-white/5">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                      <span className="text-amber-400 text-base">✨</span>
+                      <div className="flex-1">
+                        <p className="text-amber-400/90 text-xs font-medium">Mode Démo</p>
+                        <p className="text-amber-400/60 text-[10px] leading-tight">
+                          Sync local uniquement
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
