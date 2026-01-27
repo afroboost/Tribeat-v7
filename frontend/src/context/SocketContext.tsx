@@ -194,38 +194,44 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Join session
   const joinSession = useCallback((newSessionId: string, newUserId: string, isHost: boolean) => {
-    // Close existing channels
+    // Close existing channel
     if (supabaseChannelRef.current && supabase) {
       unsubscribeChannel(supabaseChannelRef.current);
       supabaseChannelRef.current = null;
     }
-    if (broadcastChannelRef.current) {
-      broadcastChannelRef.current.close();
-      broadcastChannelRef.current = null;
-    }
     
     setSessionId(newSessionId);
     isHostRef.current = isHost;
+    setConnectionStatus('connecting');
+    setConnectionError(null);
 
     // Create Supabase Realtime channel if configured
     if (isSupabaseConfigured) {
-      supabaseChannelRef.current = createSessionChannel(newSessionId, handleMessage);
-      console.log('[REALTIME] Connected via Supabase Realtime');
+      try {
+        supabaseChannelRef.current = createSessionChannel(newSessionId, handleMessage);
+        setConnectionStatus('connected');
+        setIsConnected(true);
+        console.log('[REALTIME] Connected via Supabase Realtime');
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Connexion Supabase échouée';
+        setConnectionStatus('error');
+        setConnectionError(errorMsg);
+        console.error('[REALTIME] Supabase connection error:', err);
+      }
     } else {
-      console.log('[REALTIME] Supabase not configured, using BroadcastChannel fallback');
+      // Local mode - no real-time sync available
+      setConnectionStatus('connected');
+      setIsConnected(true);
+      setConnectionError('Mode Local - Backend non connecté. Ajoutez REACT_APP_SUPABASE_URL et REACT_APP_SUPABASE_ANON_KEY dans .env');
+      console.log('[REALTIME] Local mode - no Supabase credentials');
     }
 
-    // Always create BroadcastChannel as fallback (for same-browser testing)
-    const channelName = `beattribe_session_${newSessionId}`;
-    broadcastChannelRef.current = new BroadcastChannel(channelName);
-    broadcastChannelRef.current.onmessage = (event) => handleMessage(event.data);
-
-    setIsConnected(true);
-    
     console.log('[REALTIME]', `Joined session ${newSessionId} as ${isHost ? 'HOST' : 'PARTICIPANT'}`);
     
-    // Announce joining
-    sendMessage('USER_JOINED', undefined, { isHost });
+    // Announce joining (only if Supabase is connected)
+    if (isSupabaseConfigured) {
+      sendMessage('USER_JOINED', undefined, { isHost });
+    }
   }, [handleMessage, sendMessage]);
 
   // Leave session
