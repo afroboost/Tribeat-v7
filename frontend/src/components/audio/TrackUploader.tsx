@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, Music, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, Music, X, Loader2, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { uploadAudioFile, isSupabaseConfigured, UploadResult } from '@/lib/supabaseClient';
 import { Track } from './PlaylistDnD';
@@ -28,6 +28,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const canUpload = currentTrackCount < maxTracks && !disabled;
+  const isDemoMode = !isSupabaseConfigured;
 
   // Handle file selection
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +62,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
     setProgress(0);
     setError(null);
 
-    // Simulate progress for UX (Supabase doesn't provide progress)
+    // Simulate progress for UX
     const progressInterval = setInterval(() => {
       setProgress(prev => Math.min(prev + 10, 90));
     }, 200);
@@ -73,14 +74,13 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
         // Real Supabase upload
         result = await uploadAudioFile(selectedFile, sessionId, setProgress);
       } else {
-        // Mock upload for development
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Demo mode - local file simulation
+        await new Promise(resolve => setTimeout(resolve, 1200));
         result = {
           success: true,
           url: URL.createObjectURL(selectedFile),
-          path: `mock/${sessionId}/${selectedFile.name}`,
+          path: `demo/${sessionId}/${selectedFile.name}`,
         };
-        console.log('[MOCK] File uploaded:', result.url);
       }
 
       clearInterval(progressInterval);
@@ -91,15 +91,15 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
 
         // Extract title from filename
         const title = selectedFile.name
-          .replace(/\.[^/.]+$/, '') // Remove extension
-          .replace(/[_-]/g, ' ')    // Replace separators
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[_-]/g, ' ')
           .trim();
 
         // Create new track
         const newTrack: Track = {
           id: Date.now(),
           title: title || 'Sans titre',
-          artist: 'Upload utilisateur',
+          artist: isDemoMode ? 'Mode Démo' : 'Upload utilisateur',
           src: result.url,
         };
 
@@ -124,7 +124,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     }
-  }, [selectedFile, sessionId, onTrackUploaded]);
+  }, [selectedFile, sessionId, onTrackUploaded, isDemoMode]);
 
   // Cancel selection
   const handleCancel = useCallback(() => {
@@ -143,7 +143,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="track-uploader">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -152,6 +152,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
         onChange={handleFileSelect}
         className="hidden"
         disabled={!canUpload || status === 'uploading'}
+        data-testid="file-input"
       />
 
       {/* Upload Area */}
@@ -159,6 +160,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
         <button
           onClick={triggerFilePicker}
           disabled={!canUpload}
+          data-testid="upload-trigger-btn"
           className={`
             w-full p-4 rounded-lg border-2 border-dashed transition-all
             flex flex-col items-center justify-center gap-2
@@ -168,16 +170,36 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
             }
           `}
         >
-          <Upload size={24} strokeWidth={1.5} className="text-white/50" />
-          <span className="text-sm text-white/50">
-            {canUpload 
-              ? 'Cliquez pour ajouter un MP3' 
-              : `Limite atteinte (${maxTracks} titres max)`
-            }
-          </span>
-          <span className="text-xs text-white/30">
-            {currentTrackCount}/{maxTracks} titres • Max 50 Mo
-          </span>
+          {isDemoMode ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Sparkles size={20} strokeWidth={1.5} className="text-yellow-400/70" />
+                <Upload size={24} strokeWidth={1.5} className="text-white/50" />
+              </div>
+              <span className="text-sm text-white/50">
+                {canUpload 
+                  ? 'Mode Démo - Ajouter un MP3 local' 
+                  : `Limite atteinte (${maxTracks} titres max)`
+                }
+              </span>
+              <span className="text-xs text-yellow-400/60">
+                Fichier disponible uniquement dans cette session
+              </span>
+            </>
+          ) : (
+            <>
+              <Upload size={24} strokeWidth={1.5} className="text-white/50" />
+              <span className="text-sm text-white/50">
+                {canUpload 
+                  ? 'Cliquez pour ajouter un MP3' 
+                  : `Limite atteinte (${maxTracks} titres max)`
+                }
+              </span>
+              <span className="text-xs text-white/30">
+                {currentTrackCount}/{maxTracks} titres • Max 50 Mo
+              </span>
+            </>
+          )}
         </button>
       )}
 
@@ -187,7 +209,10 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
           <div className="flex items-center gap-3">
             <div 
               className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #8A2EFF 0%, #FF2FB3 100%)' }}
+              style={{ background: isDemoMode 
+                ? 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)' 
+                : 'linear-gradient(135deg, #8A2EFF 0%, #FF2FB3 100%)' 
+              }}
             >
               <Music size={18} strokeWidth={1.5} className="text-white" />
             </div>
@@ -200,6 +225,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
             <button
               onClick={handleCancel}
               className="p-1.5 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
+              data-testid="cancel-selection-btn"
             >
               <X size={16} strokeWidth={1.5} />
             </button>
@@ -217,35 +243,58 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
             <Button
               onClick={handleUpload}
               size="sm"
+              data-testid="upload-btn"
               className="flex-1 text-white border-none"
               style={{
-                background: 'linear-gradient(135deg, #8A2EFF 0%, #FF2FB3 100%)',
+                background: isDemoMode 
+                  ? 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)' 
+                  : 'linear-gradient(135deg, #8A2EFF 0%, #FF2FB3 100%)',
               }}
             >
-              <Upload size={14} strokeWidth={1.5} className="mr-1" />
-              Upload
+              {isDemoMode ? (
+                <>
+                  <Sparkles size={14} strokeWidth={1.5} className="mr-1" />
+                  Simuler
+                </>
+              ) : (
+                <>
+                  <Upload size={14} strokeWidth={1.5} className="mr-1" />
+                  Upload
+                </>
+              )}
             </Button>
           </div>
 
-          {/* Supabase status indicator */}
-          {!isSupabaseConfigured && (
-            <p className="text-xs text-yellow-400/70 text-center">
-              ⚠️ Mode démo (Supabase non configuré)
-            </p>
+          {/* Demo mode indicator */}
+          {isDemoMode && (
+            <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+              <Sparkles size={12} className="text-yellow-400" />
+              <p className="text-xs text-yellow-400/80">
+                Mode Démo - Le fichier sera lu localement
+              </p>
+            </div>
           )}
         </div>
       )}
 
       {/* Uploading */}
       {status === 'uploading' && (
-        <div className="p-4 rounded-lg bg-white/5 border border-[#8A2EFF]/30 space-y-3">
+        <div className={`p-4 rounded-lg bg-white/5 border space-y-3 ${
+          isDemoMode ? 'border-yellow-500/30' : 'border-[#8A2EFF]/30'
+        }`}>
           <div className="flex items-center gap-3">
-            <Loader2 size={20} strokeWidth={1.5} className="text-[#8A2EFF] animate-spin" />
+            <Loader2 size={20} strokeWidth={1.5} className={`animate-spin ${
+              isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'
+            }`} />
             <div className="flex-1">
-              <p className="text-white text-sm">Upload en cours...</p>
+              <p className="text-white text-sm">
+                {isDemoMode ? 'Simulation en cours...' : 'Upload en cours...'}
+              </p>
               <p className="text-white/50 text-xs">{selectedFile?.name}</p>
             </div>
-            <span className="text-[#8A2EFF] text-sm font-mono">{progress}%</span>
+            <span className={`text-sm font-mono ${isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'}`}>
+              {progress}%
+            </span>
           </div>
           
           {/* Progress bar */}
@@ -254,7 +303,9 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
               className="h-full rounded-full transition-all duration-300"
               style={{ 
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%)',
+                background: isDemoMode 
+                  ? 'linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)'
+                  : 'linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%)',
               }}
             />
           </div>
@@ -266,7 +317,9 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
         <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center gap-3">
           <CheckCircle size={20} strokeWidth={1.5} className="text-green-400" />
           <div className="flex-1">
-            <p className="text-green-400 text-sm">Upload réussi !</p>
+            <p className="text-green-400 text-sm">
+              {isDemoMode ? 'Simulation réussie !' : 'Upload réussi !'}
+            </p>
             <p className="text-green-400/60 text-xs">Titre ajouté à la playlist</p>
           </div>
         </div>
@@ -278,7 +331,7 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
           <div className="flex items-center gap-3">
             <AlertCircle size={20} strokeWidth={1.5} className="text-red-400" />
             <div className="flex-1">
-              <p className="text-red-400 text-sm">Erreur d'upload</p>
+              <p className="text-red-400 text-sm">Erreur</p>
               <p className="text-red-400/60 text-xs">{error}</p>
             </div>
           </div>
