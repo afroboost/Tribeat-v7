@@ -8,156 +8,125 @@
 - **Build**: Create React App (CRA) avec CRACO
 - **UI Components**: Shadcn/UI + Radix UI
 - **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable
-- **Real-time**: Supabase Realtime Channels (mode local si non configuré)
+- **Real-time**: Supabase Realtime Channels (mode démo si non configuré)
 - **Storage**: Supabase Storage (bucket: audio-tracks)
 - **Routing**: react-router-dom v6
-- **Persistence**: LocalStorage (thème, pseudo), SessionStorage (userId)
+- **Fonts**: Space Grotesk (headings) + Inter (body) via Google Fonts CDN
+
+## État du Déploiement
+
+### ✅ Prêt pour Emergent/Vercel
+- Build de production réussi sans erreurs ni warnings
+- Mode Démo fonctionnel sans clés API
+- Configuration Emergent créée (`emergent-config.json`)
+- Variables d'environnement documentées
+
+### Comportement selon configuration
+
+| Fonctionnalité | Avec Supabase | Sans Supabase (Démo) |
+|----------------|---------------|----------------------|
+| Création session | ✅ | ✅ |
+| Upload MP3 | Cloud Storage | Blob local |
+| Sync multi-device | ✅ Realtime | ❌ Local uniquement |
+| Persistance playlist | ✅ Database | ❌ Session only |
+| UI/UX | Identique | Identique |
 
 ## Fonctionnalités Implémentées
 
-### ✅ Phase 1 - Core (Complété)
+### ✅ Phase 1 - Core
 - [x] Design System Beattribe (couleurs, fonts, CSS variables)
 - [x] Page d'accueil avec Hero Section
-- [x] Formulaire "Créer/Rejoindre session"
 - [x] Dashboard Admin protégé (/admin) - MDP: `BEATTRIBE2026`
-- [x] Système de thème dynamique avec LocalStorage
 - [x] Lecteur audio avec distinction Host/Participant
-- [x] Modal de saisie de pseudo avec persistance
 - [x] Routes dynamiques (/session/:sessionId)
 
-### ✅ Phase 2 - Playlist & Modération (Complété)
-- [x] **Playlist Drag & Drop** (10 titres max)
-- [x] **Panel de Modération Participants**
-- [x] **Contrôle Micro Hôte**
-- [x] **Design minimaliste** (lucide-react, bordures fines)
+### ✅ Phase 2 - Playlist & Modération
+- [x] Playlist Drag & Drop (10 titres max)
+- [x] Panel de Modération Participants
+- [x] Contrôle Micro Hôte
 
-### ✅ Phase 3 - Real-Time (Complété - 27 Jan 2026)
-- [x] **SocketProvider** avec Supabase Realtime
-- [x] **Modération temps réel**:
-  - CMD_MUTE_USER → Force mute côté participant
-  - CMD_UNMUTE_USER → Réactive le son
-  - CMD_EJECT_USER → Redirection vers / avec toast
-  - CMD_VOLUME_CHANGE → Ajustement volume distant
-- [x] **Sync Playlist** → Réorganisation synchronisée pour tous
-- [x] **Mode Local** → Message d'avertissement si Supabase non configuré
-- [x] **Logs console** pour debug ([REALTIME IN/OUT])
+### ✅ Phase 3 - Real-Time & Supabase
+- [x] SocketProvider avec Supabase Realtime
+- [x] Modération temps réel (mute/unmute/eject/volume)
+- [x] Sync Playlist multi-device
+- [x] Upload MP3 vers Supabase Storage
 
-### ✅ Phase 4 - Supabase Integration (Complété - 27 Jan 2026)
-- [x] **supabaseClient.ts** - Configuration client avec détection auto
-- [x] **TrackUploader.tsx** - Composant upload MP3
-- [x] **SocketContext.tsx** - Refactoring pour Supabase Realtime uniquement
-- [x] **.env.example** - Documentation complète de configuration
-- [x] **Indicateur de connexion** - Badge Supabase/Local dans l'UI
-- [x] **Message "Mode Local"** - Avertissement visible si backend non connecté
+### ✅ Phase 4 - Déploiement (27 Jan 2026)
+- [x] Mode Démo avec UI dédiée (badge "⚡ Démo", indicateur visuel)
+- [x] Fallback gracieux sans clés API
+- [x] TrackUploader avec mode simulation
+- [x] emergent-config.json pour déploiement
+- [x] Suppression logs sensibles en production
+- [x] Build optimisé (178KB JS, 7.8KB CSS gzip)
 
-## Architecture Supabase
+## Architecture Fichiers
 
 ```
-supabaseClient.ts
-├── Configuration
-│   ├── REACT_APP_SUPABASE_URL
-│   ├── REACT_APP_SUPABASE_ANON_KEY
-│   └── REACT_APP_SUPABASE_BUCKET (default: audio-tracks)
-│
-├── Storage Functions
-│   ├── uploadAudioFile(file, sessionId) → UploadResult
-│   ├── deleteAudioFile(filePath) → boolean
-│   └── listSessionFiles(sessionId) → string[]
-│
-├── Realtime Functions
-│   ├── createSessionChannel(sessionId, onMessage) → RealtimeChannel
-│   ├── broadcastToSession(channel, payload) → boolean
-│   └── unsubscribeChannel(channel) → void
-│
-└── Database Functions
-    ├── savePlaylist(playlist) → boolean
-    └── loadPlaylist(sessionId) → PlaylistRecord | null
+/app/
+├── emergent-config.json          # Config déploiement Emergent
+├── frontend/
+│   ├── .env.example              # Documentation variables
+│   ├── src/
+│   │   ├── components/audio/
+│   │   │   ├── TrackUploader.tsx # Upload avec mode démo
+│   │   │   ├── PlaylistDnD.tsx   # Playlist drag & drop
+│   │   │   └── AudioPlayer.tsx   # Lecteur principal
+│   │   ├── context/
+│   │   │   ├── SocketContext.tsx # Realtime avec fallback
+│   │   │   └── ThemeContext.tsx  # Thème dynamique
+│   │   ├── lib/
+│   │   │   └── supabaseClient.ts # Client + fonctions
+│   │   ├── pages/
+│   │   │   └── SessionPage.tsx   # Page session
+│   │   └── styles/
+│   │       └── globals.css       # Design system
+│   └── build/                    # Production build
+└── memory/
+    └── PRD.md                    # Ce fichier
 ```
 
-## Events Temps Réel
+## Variables d'Environnement
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| CMD_MUTE_USER | Host → Participant | Force mute audio |
-| CMD_UNMUTE_USER | Host → Participant | Réactive audio |
-| CMD_EJECT_USER | Host → Participant | Éjecte de la session |
-| CMD_VOLUME_CHANGE | Host → Participant | Change volume distant |
-| SYNC_PLAYLIST | Host → All | Synchronise ordre playlist |
-| SYNC_PLAYBACK | Host → All | Synchronise lecture |
-| USER_JOINED | Any → All | Annonce arrivée |
-| USER_LEFT | Any → All | Annonce départ |
-
-## Configuration Supabase Requise
-
-### 1. Storage Bucket
-```sql
--- Créer bucket "audio-tracks" avec:
-- Public: OUI
-- Allowed MIME types: audio/mpeg, audio/mp3
-- Max file size: 50MB
+### Requises pour production
+```env
+REACT_APP_SUPABASE_URL=https://xxx.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJhbG...
 ```
 
-### 2. Policies
-```sql
--- Public read
-CREATE POLICY "Allow public read" ON storage.objects
-FOR SELECT USING (bucket_id = 'audio-tracks');
-
--- Authenticated upload
-CREATE POLICY "Allow upload" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'audio-tracks');
+### Optionnelles
+```env
+REACT_APP_SUPABASE_BUCKET=audio-tracks  # Défaut: audio-tracks
 ```
 
-### 3. Table Playlists (optionnel)
-```sql
-CREATE TABLE playlists (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  session_id TEXT UNIQUE NOT NULL,
-  tracks JSONB NOT NULL DEFAULT '[]',
-  selected_track_id INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+## Checklist Déploiement
 
-ALTER TABLE playlists ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all" ON playlists FOR ALL USING (true) WITH CHECK (true);
-```
+- [x] Build production sans erreurs
+- [x] Logs sensibles supprimés
+- [x] .env.example documenté
+- [x] emergent-config.json créé
+- [x] Mode démo fonctionnel
+- [x] Fonts CDN (Google Fonts)
+- [x] Imports validés
 
-## Files de Référence
+## Tâches Futures
 
-| File | Description |
-|------|-------------|
-| `/frontend/src/lib/supabaseClient.ts` | Client Supabase + fonctions Storage/Realtime |
-| `/frontend/src/context/SocketContext.tsx` | Provider temps réel |
-| `/frontend/src/components/audio/TrackUploader.tsx` | Composant upload MP3 |
-| `/frontend/src/pages/SessionPage.tsx` | Page session principale |
-| `/frontend/.env.example` | Documentation configuration |
+### P1 - Post-Déploiement
+- [ ] Tests E2E avec Supabase réel
+- [ ] Monitoring erreurs (Sentry)
 
-## Tâches à Venir
+### P2 - Améliorations
+- [ ] Convertir .jsx → .tsx restants
+- [ ] Refactoring SessionPage.tsx
+- [ ] Authentification réelle
 
-### P1 - Priorité Haute
-- [ ] Convertir composants `.jsx` → `.tsx` restants
-- [ ] Refactoring SessionPage.tsx (trop volumineux)
-
-### P2 - Priorité Moyenne  
-- [ ] Nickname Host "Coach" par défaut éditable
-- [ ] Persister thème dans Supabase
-- [ ] Authentification réelle (remplacer MDP hardcodé)
-
-### P3 - Backlog
-- [ ] Equalizer visuel avancé
+### P3 - Features
 - [ ] Chat texte temps réel
-- [ ] Historique des sessions
+- [ ] Historique sessions
+- [ ] Equalizer avancé
 
 ## Credentials Test
-- **Admin URL**: `/admin`
-- **Password**: `BEATTRIBE2026`
-- **Supabase**: Nécessite `.env` avec `REACT_APP_SUPABASE_URL` et `REACT_APP_SUPABASE_ANON_KEY`
+- **Admin**: `/admin` → MDP: `BEATTRIBE2026`
+- **Supabase**: Variables dans Emergent Dashboard
 
-## Notes Importantes
-
-⚠️ **Mode Local Active** : Sans configuration Supabase, l'application fonctionne en mode local. Les fonctionnalités temps réel multi-appareils ne sont pas disponibles. L'upload utilise un mock avec `URL.createObjectURL()`.
-
-✅ **Build Status**: `npm run build` réussit sans erreurs ni warnings.
-
-✅ **Prêt pour Déploiement**: Le code est prêt pour Emergent et Vercel. Il suffit de configurer les variables d'environnement Supabase.
+---
+*Dernière mise à jour: 27 Jan 2026 - Prêt pour déploiement Emergent*
