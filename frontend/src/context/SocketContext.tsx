@@ -42,11 +42,14 @@ interface SocketContextValue {
   // Connection state
   isConnected: boolean;
   isSupabaseMode: boolean;
+  connectionStatus: ConnectionStatus;
+  connectionMode: ConnectionMode;
+  connectionError: string | null;
   userId: string;
   sessionId: string | null;
   
   // Join/Leave
-  joinSession: (sessionId: string, oderId: string, isHost: boolean) => void;
+  joinSession: (sessionId: string, userId: string, isHost: boolean) => void;
   leaveSession: () => void;
   
   // Host Commands
