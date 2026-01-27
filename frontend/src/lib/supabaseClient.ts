@@ -122,20 +122,21 @@ export async function uploadAudioFile(
       }
     } catch {
       // Response might not be JSON
-      console.log('[SUPABASE STORAGE] Response:', responseText);
     }
 
     if (!response.ok) {
       const errorMessage = responseData.message || responseData.error || `Erreur HTTP ${response.status}`;
-      console.error('[SUPABASE STORAGE] Upload failed:', {
+      
+      // Log helpful error with status
+      console.error('[SUPABASE STORAGE] ❌ Upload failed:', {
         status: response.status,
         error: errorMessage,
-        hint: response.status === 404 
-          ? '⚠️ Le bucket "audio-tracks" n\'existe pas. Créez-le dans Supabase Dashboard > Storage'
-          : response.status === 403
-          ? '⚠️ Permissions RLS insuffisantes. Vérifiez les policies du bucket.'
-          : ''
       });
+
+      // Show configuration instructions for common errors
+      if (response.status === 404 || response.status === 403) {
+        logBucketConfigInstructions();
+      }
 
       // Provide helpful error messages
       if (response.status === 404) {
