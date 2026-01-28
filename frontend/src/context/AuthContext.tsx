@@ -182,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Refresh profile
   const refreshProfile = useCallback(async (): Promise<void> => {
     if (user) {
-      const updatedProfile = await fetchProfile(user.id);
+      const updatedProfile = await fetchProfile(user.id, user.email || '', user.user_metadata);
       setProfile(updatedProfile);
     }
   }, [user, fetchProfile]);
