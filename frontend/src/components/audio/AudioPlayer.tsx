@@ -56,9 +56,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   } = useAudioSync({ isHost, sessionId, onStateChange, onSyncUpdate, onTrackEnded });
 
   const [showVolume, setShowVolume] = useState(false);
+  const isFirstRender = useRef(true);
 
-  // Notify parent of repeat mode changes
+  // Notify parent of repeat mode changes (skip initial render)
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     onRepeatModeChange?.(repeatMode);
   }, [repeatMode, onRepeatModeChange]);
 
