@@ -58,9 +58,9 @@ const App: React.FC = () => {
                   <Route 
                     path="/admin" 
                     element={
-                      <ProtectedRoute>
+                      <RequireAdmin>
                         <AdminDashboard />
-                      </ProtectedRoute>
+                      </RequireAdmin>
                     } 
                   />
                 </Routes>
