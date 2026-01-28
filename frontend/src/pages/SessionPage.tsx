@@ -1042,7 +1042,9 @@ export const SessionPage: React.FC = () => {
               </h1>
               <p className="text-white/60 text-sm sm:text-base">
                 {isHost 
-                  ? 'Vous êtes l\'hôte. Contrôlez la lecture pour tous les participants.'
+                  ? (hasHostPrivileges 
+                      ? '👑 Mode Admin - Contrôle total de la session.'
+                      : 'Vous êtes l\'hôte. Contrôlez la lecture pour tous les participants.')
                   : 'Mode écoute seule. La lecture est synchronisée avec l\'hôte.'
                 }
               </p>
