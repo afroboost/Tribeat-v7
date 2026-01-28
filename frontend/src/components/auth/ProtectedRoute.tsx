@@ -60,6 +60,8 @@ function storeAuth(): boolean {
       timestamp: Date.now(),
     };
     sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
+    // Also mark as admin for subscription context
+    sessionStorage.setItem('bt_is_admin', 'true');
     return true;
   } catch (error) {
     console.error("Failed to store auth:", error);
@@ -73,6 +75,7 @@ function clearAuth(): void {
   
   try {
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem('bt_is_admin');
   } catch (error) {
     console.warn("Failed to clear auth:", error);
   }
