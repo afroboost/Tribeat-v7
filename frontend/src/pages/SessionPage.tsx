@@ -406,20 +406,6 @@ export const SessionPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Broadcast audio when host mic stream changes
-  const isBroadcastingRef = useRef(false);
-  useEffect(() => {
-    if (isHost && hostMicStream && peerState.isConnected && !isBroadcastingRef.current) {
-      console.log('[WebRTC] Broadcasting host mic stream');
-      isBroadcastingRef.current = true;
-      broadcastAudio(hostMicStream);
-    } else if (isHost && !hostMicStream && isBroadcastingRef.current) {
-      console.log('[WebRTC] Stopping broadcast');
-      isBroadcastingRef.current = false;
-      stopBroadcast();
-    }
-  }, [isHost, hostMicStream, peerState.isConnected, broadcastAudio, stopBroadcast]);
-
   // Duck effect: lower music when host speaks
   const handleDuckMusic = useCallback((shouldDuck: boolean) => {
     const audioEl = document.querySelector('audio');
