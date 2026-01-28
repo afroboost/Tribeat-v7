@@ -62,6 +62,9 @@ interface SocketContextValue {
   syncPlaylist: (tracks: PlaylistPayload['tracks'], selectedTrackId: number) => void;
   syncPlayback: (isPlaying: boolean, currentTime: number, trackId: number) => void;
   
+  // Generic broadcast for custom events (WebRTC signaling)
+  broadcast: (eventType: string, data?: unknown) => void;
+  
   // Persistence
   savePlaylistToDb: (tracks: PlaylistPayload['tracks'], selectedTrackId: number) => Promise<boolean>;
   loadPlaylistFromDb: () => Promise<PlaylistRecord | null>;
@@ -280,6 +283,24 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!isHostRef.current) return;
     sendMessage('SYNC_PLAYBACK', undefined, { isPlaying, currentTime, trackId });
   }, [sendMessage]);
+
+  // Generic broadcast for custom events (WebRTC signaling)
+  const broadcast = useCallback((eventType: string, data?: unknown) => {
+    if (!supabaseChannelRef.current) return;
+    
+    const payload: RealtimePayload = {
+      type: eventType as RealtimeEventType,
+      senderId: userId,
+      data,
+      timestamp: Date.now(),
+    };
+    
+    if (isDev) {
+      console.log('[REALTIME BROADCAST]', eventType, data);
+    }
+    
+    broadcastToSession(supabaseChannelRef.current, payload);
+  }, [userId, isDev]);
 
   // Database persistence
   const savePlaylistToDb = useCallback(async (tracks: PlaylistPayload['tracks'], selectedTrackId: number): Promise<boolean> => {
