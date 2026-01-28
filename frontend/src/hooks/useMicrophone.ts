@@ -25,7 +25,7 @@ export interface UseMicrophoneReturn {
   toggleMute: () => void;
   setVolume: (volume: number) => void;
   setDevice: (deviceId: string) => Promise<void>;
-  refreshDevices: () => Promise<void>;
+  refreshDevices: () => Promise<MediaDeviceInfo[]>;
   audioStream: MediaStream | null;
   audioContext: AudioContext | null;
   gainNode: GainNode | null;
