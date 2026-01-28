@@ -60,114 +60,120 @@ export interface UploadResult {
 }
 
 /**
- * Upload an audio file to Supabase Storage
- * Uses direct fetch to avoid "body stream already read" error
+ * Upload an audio file to Supabase Storage using SDK
+ * Properly handles the response without double-reading streams
  */
 export async function uploadAudioFile(
   file: File,
   sessionId: string,
   onProgress?: (progress: number) => void
 ): Promise<UploadResult> {
-  if (!supabase || !supabaseUrl || !supabaseAnonKey) {
+  // Check environment variables
+  if (!supabase) {
+    console.error('[SUPABASE] ❌ Client non initialisé');
+    console.error('[SUPABASE] Vérifiez REACT_APP_SUPABASE_URL et REACT_APP_SUPABASE_ANON_KEY dans .env');
     return { 
       success: false, 
-      error: 'Supabase non configuré. Ajoutez vos clés API dans .env' 
+      error: 'Supabase non configuré. Vérifiez vos variables d\'environnement.' 
     };
   }
 
-  try {
-    // Validate file type
-    if (!file.type.includes('audio/')) {
-      return { success: false, error: 'Seuls les fichiers audio sont acceptés' };
-    }
+  // Validate file type
+  if (!file.type.includes('audio/')) {
+    return { success: false, error: 'Seuls les fichiers audio sont acceptés' };
+  }
 
-    // Validate file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return { success: false, error: 'Le fichier ne doit pas dépasser 50 Mo' };
-    }
+  // Validate file size (max 50MB)
+  const maxSize = 50 * 1024 * 1024;
+  if (file.size > maxSize) {
+    return { success: false, error: 'Le fichier ne doit pas dépasser 50 Mo' };
+  }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const filePath = `${sessionId}/${timestamp}_${sanitizedName}`;
+  // Generate unique filename
+  const timestamp = Date.now();
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const filePath = `${sessionId}/${timestamp}_${sanitizedName}`;
 
-    console.log('[SUPABASE STORAGE] Starting upload:', { 
-      bucket: AUDIO_BUCKET, 
-      path: filePath,
-      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+  console.log('[SUPABASE STORAGE] 📤 Starting upload:', { 
+    bucket: AUDIO_BUCKET, 
+    path: filePath,
+    size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+    type: file.type
+  });
+
+  // Use SDK upload - single call, no double reading
+  const { data, error } = await supabase.storage
+    .from(AUDIO_BUCKET)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || 'audio/mpeg',
     });
 
-    // Use direct fetch to avoid SDK stream issues
-    const uploadUrl = `${supabaseUrl}/storage/v1/object/${AUDIO_BUCKET}/${filePath}`;
+  // Handle error from SDK
+  if (error) {
+    console.error('[SUPABASE STORAGE] ❌ Upload error:', error.message);
     
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'apikey': supabaseAnonKey,
-        'Content-Type': file.type || 'audio/mpeg',
-        'x-upsert': 'false',
-      },
-      body: file,
+    // Check for specific error types
+    const errorLower = error.message.toLowerCase();
+    
+    if (errorLower.includes('not found') || errorLower.includes('bucket')) {
+      logBucketConfigInstructions();
+      return { 
+        success: false, 
+        error: 'Bucket "audio-tracks" introuvable. Créez-le dans Supabase Dashboard > Storage.' 
+      };
+    }
+    
+    if (errorLower.includes('policy') || errorLower.includes('permission') || errorLower.includes('403') || errorLower.includes('forbidden')) {
+      console.warn('[SUPABASE STORAGE] ⚠️ Veuillez vérifier vos politiques SQL RLS');
+      logBucketConfigInstructions();
+      return { 
+        success: false, 
+        error: 'Permission refusée (403). Vérifiez vos politiques SQL RLS dans Supabase.' 
+      };
+    }
+    
+    if (errorLower.includes('too large') || errorLower.includes('size')) {
+      return { 
+        success: false, 
+        error: 'Fichier trop volumineux. Limite Supabase dépassée.' 
+      };
+    }
+
+    if (errorLower.includes('duplicate') || errorLower.includes('already exists')) {
+      return { 
+        success: false, 
+        error: 'Un fichier avec ce nom existe déjà.' 
+      };
+    }
+    
+    return { success: false, error: error.message };
+  }
+
+  // Success - get public URL
+  if (data?.path) {
+    const { data: urlData } = supabase.storage
+      .from(AUDIO_BUCKET)
+      .getPublicUrl(data.path);
+
+    console.log('[SUPABASE STORAGE] ✅ Upload réussi !', {
+      path: data.path,
+      url: urlData.publicUrl
     });
-
-    // Read response only once
-    const responseText = await response.text();
-    let responseData: { error?: string; message?: string; statusCode?: string; Key?: string } = {};
-    
-    try {
-      if (responseText) {
-        responseData = JSON.parse(responseText);
-      }
-    } catch {
-      // Response might not be JSON
-    }
-
-    if (!response.ok) {
-      const errorMessage = responseData.message || responseData.error || `Erreur HTTP ${response.status}`;
-      
-      // Log helpful error with status
-      console.error('[SUPABASE STORAGE] ❌ Upload failed:', {
-        status: response.status,
-        error: errorMessage,
-      });
-
-      // Show configuration instructions for common errors
-      if (response.status === 404 || response.status === 403) {
-        logBucketConfigInstructions();
-      }
-
-      // Provide helpful error messages
-      if (response.status === 404) {
-        return { 
-          success: false, 
-          error: 'Bucket "audio-tracks" introuvable. Créez-le dans Supabase Dashboard.' 
-        };
-      }
-      if (response.status === 403) {
-        return { 
-          success: false, 
-          error: 'Permission refusée. Activez l\'accès public dans les policies du bucket.' 
-        };
-      }
-      if (response.status === 413) {
-        return { 
-          success: false, 
-          error: 'Fichier trop volumineux pour Supabase (limite dépassée).' 
-        };
-      }
-      
-      return { success: false, error: errorMessage };
-    }
-
-    // Get public URL
-    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${AUDIO_BUCKET}/${filePath}`;
-
-    console.log('[SUPABASE STORAGE] ✅ Upload success:', publicUrl);
 
     return {
       success: true,
+      url: urlData.publicUrl,
+      path: data.path,
+    };
+  }
+
+  return { 
+    success: false, 
+    error: 'Réponse inattendue du serveur. Réessayez.' 
+  };
+}
       url: publicUrl,
       path: filePath,
     };
