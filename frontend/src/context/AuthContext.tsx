@@ -412,9 +412,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Admin emails for instant bypass
-  const ADMIN_EMAILS = ['contact.artboost@gmail.com'];
-
   // Check if email is admin (instant check, no DB needed)
   const isAdminEmail = useCallback((email: string | undefined | null): boolean => {
     if (!email) return false;
