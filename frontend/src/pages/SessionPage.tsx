@@ -345,7 +345,13 @@ export const SessionPage: React.FC = () => {
       console.log('[SESSION] Participant disconnected:', peerId);
     },
     onReceiveAudio: (stream) => {
-      console.log('[SESSION] 🔊 Receiving host audio');
+      console.log('[SESSION] 🔊 Receiving host audio stream');
+    },
+    onVoiceStart: () => {
+      console.log('[SESSION] 🔉 Voice playback started!');
+    },
+    onVoiceEnd: () => {
+      console.log('[SESSION] Voice playback ended');
     },
     onError: (error) => {
       console.error('[SESSION] WebRTC Error:', error);
@@ -358,6 +364,14 @@ export const SessionPage: React.FC = () => {
       }
     },
   });
+
+  // Host: Broadcast VOICE_START when mic is active
+  useEffect(() => {
+    if (isHost && hostMicStream && peerState.isBroadcasting && socket.isSupabaseMode) {
+      console.log('[SESSION] Broadcasting VOICE_START');
+      socket.broadcast('VOICE_START', { timestamp: Date.now() });
+    }
+  }, [isHost, hostMicStream, peerState.isBroadcasting, socket]);
 
   // Connect Participant to PeerJS immediately
   const peerConnectedRef = useRef(false);
