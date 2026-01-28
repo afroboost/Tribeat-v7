@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, X, MoreHorizontal } from 'lucide-react';
+import { Volume2, VolumeX, X, MoreHorizontal, Mic } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 
@@ -12,6 +12,8 @@ export interface Participant {
   isHost?: boolean;
   volume?: number;
   isMuted?: boolean;
+  isMicActive?: boolean; // Indicates if mic is active
+  audioLevel?: number; // For VU meter display
 }
 
 interface ParticipantItemProps {
