@@ -11,6 +11,7 @@ export interface PeerState {
   error: string | null;
   isBroadcasting: boolean;
   isReady: boolean;
+  isReceivingVoice: boolean; // NEW: Indicator for participants receiving voice
 }
 
 export interface UsePeerAudioOptions {
@@ -19,6 +20,8 @@ export interface UsePeerAudioOptions {
   onPeerConnected?: (peerId: string) => void;
   onPeerDisconnected?: (peerId: string) => void;
   onReceiveAudio?: (stream: MediaStream) => void;
+  onVoiceStart?: () => void; // NEW: Called when voice reception starts
+  onVoiceEnd?: () => void;   // NEW: Called when voice reception ends
   onError?: (error: string) => void;
   onReady?: () => void;
 }
@@ -42,11 +45,38 @@ const initialState: PeerState = {
   error: null,
   isBroadcasting: false,
   isReady: false,
+  isReceivingVoice: false,
 };
+
+// Audio element ID for remote voice
+const REMOTE_AUDIO_ID = 'remote-voice-audio';
+
+/**
+ * Create or get the remote audio element for voice playback
+ * This element plays the host's voice on participant devices
+ */
+function getOrCreateRemoteAudioElement(): HTMLAudioElement {
+  let audioEl = document.getElementById(REMOTE_AUDIO_ID) as HTMLAudioElement;
+  
+  if (!audioEl) {
+    console.log('[PEER] 🔊 Creating remote audio element');
+    audioEl = document.createElement('audio');
+    audioEl.id = REMOTE_AUDIO_ID;
+    audioEl.autoplay = true;        // Auto-play when stream is attached
+    audioEl.playsInline = true;     // Required for iOS
+    audioEl.controls = false;       // Hidden
+    audioEl.volume = 1.0;           // Full volume for voice
+    audioEl.style.display = 'none'; // Hidden element
+    document.body.appendChild(audioEl);
+  }
+  
+  return audioEl;
+}
 
 /**
  * Hook for WebRTC audio broadcasting using PeerJS
- * SIMPLIFIED: Stream is passed at connect() time, not as prop
+ * Host broadcasts voice to all participants
+ * Participants receive and play voice through speakers
  */
 export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
   const {
@@ -55,6 +85,8 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     onPeerConnected,
     onPeerDisconnected,
     onReceiveAudio,
+    onVoiceStart,
+    onVoiceEnd,
     onError,
     onReady,
   } = options;
@@ -72,6 +104,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
   const dataConnectionsRef = useRef<Map<string, DataConnection>>(new Map());
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 3;
+  const activeCallRef = useRef<MediaConnection | null>(null);
 
   // Update state helper
   const updateState = useCallback((updates: Partial<PeerState>) => {
@@ -92,6 +125,47 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     const cleanSessionId = sessionId.replace(/[^a-zA-Z0-9]/g, '');
     return `beattribe-host-${cleanSessionId}`;
   }, [sessionId]);
+
+  /**
+   * Force play the remote audio element
+   * Handles autoplay restrictions
+   */
+  const forcePlayRemoteAudio = useCallback(async (audioEl: HTMLAudioElement, stream: MediaStream) => {
+    console.log('[PEER] 🔊 Attaching stream to audio element...');
+    
+    // Attach stream
+    audioEl.srcObject = stream;
+    audioEl.volume = 1.0;
+    audioEl.muted = false;
+    
+    // Force play
+    try {
+      await audioEl.play();
+      console.log('[PEER] ✅ Remote audio playing!');
+      updateState({ isReceivingVoice: true });
+      onVoiceStart?.();
+      return true;
+    } catch (err) {
+      console.warn('[PEER] ⚠️ Autoplay blocked:', err);
+      
+      // Try again with user interaction workaround
+      const playOnClick = async () => {
+        try {
+          await audioEl.play();
+          console.log('[PEER] ✅ Remote audio playing after user interaction');
+          updateState({ isReceivingVoice: true });
+          onVoiceStart?.();
+          document.removeEventListener('click', playOnClick);
+        } catch (e) {
+          console.error('[PEER] ❌ Still cannot play:', e);
+        }
+      };
+      
+      document.addEventListener('click', playOnClick, { once: true });
+      console.log('[PEER] ℹ️ Click anywhere to enable voice playback');
+      return false;
+    }
+  }, [updateState, onVoiceStart]);
 
   /**
    * Connect to PeerJS server
@@ -167,7 +241,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
             onReady?.();
           }
 
-          // Participant: Connect to host
+          // Participant: Connect to host for data channel
           if (!isHost) {
             console.log('[PEER] 👤 Participant connecting to host:', hostPeerId);
             const dataConn = peer.connect(hostPeerId);
@@ -185,35 +259,59 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
           resolve(true);
         });
 
-        // Handle incoming calls (for participants)
+        // ========================================
+        // PARTICIPANT: Handle incoming voice calls
+        // ========================================
         peer.on('call', (call) => {
-          console.log('[PEER] 📞 Incoming call from:', call.peer);
+          console.log('[PEER] 📞 INCOMING CALL from:', call.peer);
+          console.log('[PEER] 📞 This is the host voice stream!');
           
-          // Auto-answer (participants receive only)
+          // Store the call reference
+          activeCallRef.current = call;
+          
+          // FORCE ANSWER - participants receive only, no stream to send
+          console.log('[PEER] 📞 Answering call...');
           call.answer();
 
-          call.on('stream', (remoteStream) => {
-            console.log('[PEER] 🔊 Receiving audio stream from host');
+          // Handle incoming stream (host's voice)
+          call.on('stream', async (remoteStream) => {
+            console.log('[PEER] 🔊 ==============================');
+            console.log('[PEER] 🔊 RECEIVING VOICE STREAM FROM HOST');
+            console.log('[PEER] 🔊 Stream ID:', remoteStream.id);
+            console.log('[PEER] 🔊 Audio tracks:', remoteStream.getAudioTracks().length);
+            console.log('[PEER] 🔊 ==============================');
             
-            if (remoteAudioRef.current) {
-              remoteAudioRef.current.srcObject = remoteStream;
-              remoteAudioRef.current.play().catch(err => {
-                console.warn('[PEER] ⚠️ Autoplay blocked:', err);
-              });
-            }
-
+            // Get or create the audio element
+            const audioEl = getOrCreateRemoteAudioElement();
+            
+            // Force play
+            await forcePlayRemoteAudio(audioEl, remoteStream);
+            
+            // Notify parent component
             onReceiveAudio?.(remoteStream);
           });
 
           call.on('close', () => {
-            console.log('[PEER] Call ended');
-            if (remoteAudioRef.current) {
-              remoteAudioRef.current.srcObject = null;
+            console.log('[PEER] 📞 Call ended - voice stream stopped');
+            updateState({ isReceivingVoice: false });
+            onVoiceEnd?.();
+            
+            // Clear the audio element
+            const audioEl = document.getElementById(REMOTE_AUDIO_ID) as HTMLAudioElement;
+            if (audioEl) {
+              audioEl.srcObject = null;
             }
+            activeCallRef.current = null;
+          });
+
+          call.on('error', (err) => {
+            console.error('[PEER] ❌ Call error:', err);
           });
         });
 
-        // Handle incoming data connections (for host)
+        // ========================================
+        // HOST: Handle incoming participant connections
+        // ========================================
         peer.on('connection', (dataConn) => {
           console.log('[PEER] 📡 New participant connected:', dataConn.peer);
           
@@ -225,12 +323,13 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
             }));
             onPeerConnected?.(dataConn.peer);
 
-            // If broadcasting, call the new peer
+            // If broadcasting, call the new peer immediately
             if (currentStreamRef.current && isHost) {
-              console.log('[PEER] 📢 Calling new participant:', dataConn.peer);
+              console.log('[PEER] 📢 Calling new participant with voice stream:', dataConn.peer);
               const call = peerRef.current?.call(dataConn.peer, currentStreamRef.current);
               if (call) {
                 connectionsRef.current.set(dataConn.peer, call);
+                console.log('[PEER] ✅ Call initiated to:', dataConn.peer);
               }
             }
           });
@@ -290,7 +389,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
         peer.on('close', () => {
           console.log('[PEER] Connection closed');
-          updateState({ isConnected: false, peerId: null, isReady: false });
+          updateState({ isConnected: false, peerId: null, isReady: false, isReceivingVoice: false });
         });
 
         // Connection timeout
@@ -307,14 +406,17 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
         resolve(false);
       }
     });
-  }, [sessionId, isHost, generatePeerId, getHostPeerId, updateState, onPeerConnected, onPeerDisconnected, onReceiveAudio, onError, onReady]);
+  }, [sessionId, isHost, generatePeerId, getHostPeerId, updateState, onPeerConnected, onPeerDisconnected, onReceiveAudio, onVoiceStart, onVoiceEnd, onError, onReady, forcePlayRemoteAudio]);
 
-  // Broadcast audio to all connected peers (Host only)
+  /**
+   * HOST: Broadcast audio to all connected peers
+   */
   const broadcastAudio = useCallback((stream: MediaStream) => {
     console.log('[PEER] 📢 broadcastAudio() called');
     console.log('[PEER] DEBUG: isHost =', isHost);
     console.log('[PEER] DEBUG: peerRef.current =', !!peerRef.current);
     console.log('[PEER] DEBUG: stream =', !!stream);
+    console.log('[PEER] DEBUG: stream tracks =', stream.getAudioTracks().length);
 
     if (!isHost) {
       console.warn('[PEER] Not host, cannot broadcast');
@@ -328,16 +430,25 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
     currentStreamRef.current = stream;
     const peerCount = dataConnectionsRef.current.size;
-    console.log('[PEER] 📢 Broadcasting to', peerCount, 'participants');
+    console.log('[PEER] 📢 Broadcasting voice to', peerCount, 'participants');
 
     // Call all connected participants
     dataConnectionsRef.current.forEach((_, peerId) => {
       if (!connectionsRef.current.has(peerId)) {
-        console.log('[PEER] Calling:', peerId);
+        console.log('[PEER] 📞 Calling participant:', peerId);
         const call = peerRef.current!.call(peerId, stream);
         
+        call.on('stream', () => {
+          console.log('[PEER] Participant', peerId, 'received stream');
+        });
+
         call.on('close', () => {
+          console.log('[PEER] Call to', peerId, 'closed');
           connectionsRef.current.delete(peerId);
+        });
+
+        call.on('error', (err) => {
+          console.error('[PEER] Call error to', peerId, ':', err);
         });
 
         connectionsRef.current.set(peerId, call);
@@ -345,7 +456,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     });
 
     updateState({ isBroadcasting: true });
-    console.log('[PEER] ✅ Broadcasting active');
+    console.log('[PEER] ✅ Broadcasting active - Voice should be heard by participants');
   }, [isHost, updateState]);
 
   // Stop broadcasting
@@ -369,12 +480,24 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     console.log('[PEER] 🔌 Disconnecting...');
     stopBroadcast();
 
+    // Close active call (participant)
+    if (activeCallRef.current) {
+      activeCallRef.current.close();
+      activeCallRef.current = null;
+    }
+
     dataConnectionsRef.current.forEach((conn) => conn.close());
     dataConnectionsRef.current.clear();
 
     if (peerRef.current) {
       peerRef.current.destroy();
       peerRef.current = null;
+    }
+
+    // Clean up remote audio element
+    const audioEl = document.getElementById(REMOTE_AUDIO_ID) as HTMLAudioElement;
+    if (audioEl) {
+      audioEl.srcObject = null;
     }
 
     if (remoteAudioRef.current) {
@@ -387,6 +510,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
       connectedPeers: [],
       isBroadcasting: false,
       isReady: false,
+      isReceivingVoice: false,
     });
 
     console.log('[PEER] ✅ Disconnected');
@@ -404,6 +528,11 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
   useEffect(() => {
     return () => {
       disconnect();
+      // Remove audio element on unmount
+      const audioEl = document.getElementById(REMOTE_AUDIO_ID);
+      if (audioEl) {
+        audioEl.remove();
+      }
     };
   }, [disconnect]);
 
