@@ -439,20 +439,37 @@ export const SessionPage: React.FC = () => {
   }, [socket, isHost, showToast]);
 
   // Listen for playback sync (for participants to auto-play new tracks)
+  // Using a ref to store the audio element for direct manipulation
+  const participantAudioRef = useRef<HTMLAudioElement | null>(null);
+  
   useEffect(() => {
     if (isHost) return;
     
     const unsubPlayback = socket.onPlaybackSync((payload) => {
       console.log('[SOCKET] Received playback sync:', payload);
-      // Find and select the track
+      
+      // Find the target track
       const targetTrack = tracks.find(t => t.id === payload.trackId);
       if (targetTrack) {
+        console.log('[AUTOPLAY PARTICIPANT] Switching to:', targetTrack.title);
         setSelectedTrack(targetTrack);
+        showToast(`Enchaînement : ${targetTrack.title}`, 'default');
+        
+        // Force auto-play after state update
+        setTimeout(() => {
+          const audioEl = document.querySelector('audio');
+          if (audioEl && payload.isPlaying) {
+            audioEl.currentTime = payload.currentTime || 0;
+            audioEl.play().catch(err => {
+              console.warn('[AUTOPLAY] Play blocked:', err);
+            });
+          }
+        }, 100);
       }
     });
     
     return unsubPlayback;
-  }, [socket, isHost, tracks]);
+  }, [socket, isHost, tracks, showToast]);
 
   // Build participants list with current user
   const participants = useMemo<Participant[]>(() => {
