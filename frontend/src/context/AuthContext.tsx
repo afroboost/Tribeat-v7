@@ -406,6 +406,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  // Admin emails for instant bypass
+  const ADMIN_EMAILS = ['contact.artboost@gmail.com'];
+
+  // Check if email is admin (instant check, no DB needed)
+  const isAdminEmail = useCallback((email: string | undefined | null): boolean => {
+    if (!email) return false;
+    return ADMIN_EMAILS.includes(email.toLowerCase());
+  }, []);
+
+  // Create instant admin profile (no DB wait)
+  const createInstantAdminProfile = useCallback((userId: string, email: string, metadata?: Record<string, unknown>): UserProfile => {
+    console.log('[AUTH] ⚡ Creating instant admin profile for:', email);
+    return {
+      id: userId,
+      email: email,
+      full_name: (metadata?.full_name as string) || (metadata?.name as string) || email.split('@')[0],
+      avatar_url: (metadata?.avatar_url as string) || (metadata?.picture as string) || '',
+      role: 'admin',
+      subscription_status: 'enterprise',
+      has_accepted_terms: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }, []);
+
   // Initialize auth state
   useEffect(() => {
     if (!supabase) {
@@ -416,57 +441,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let isMounted = true;
 
-    // Get initial session
+    // Get initial session - with GUARANTEED loading end
     const initializeAuth = async () => {
-      if (!supabase) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
+      console.log('[AUTH] 🔄 Initializing auth...');
       
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('[AUTH] getSession error:', error.message);
-          if (isMounted) setIsLoading(false);
-          return;
+          return; // finally will handle setIsLoading
         }
 
-        if (isMounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
+        if (!isMounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        if (session?.user && isMounted) {
-          console.log('[AUTH] Initial session found for:', session.user.email);
+        if (session?.user) {
+          const userEmail = session.user.email || '';
+          console.log('[AUTH] Session found for:', userEmail);
           
+          // ADMIN BYPASS: Instant profile creation for admin emails
+          if (isAdminEmail(userEmail)) {
+            const adminProfile = createInstantAdminProfile(
+              session.user.id,
+              userEmail,
+              session.user.user_metadata
+            );
+            setProfile(adminProfile);
+            sessionStorage.setItem('bt_is_admin', 'true');
+            console.log('[AUTH] ✅ ADMIN BYPASS - Instant access granted');
+            return; // Skip DB fetch for admin
+          }
+          
+          // Regular users: fetch profile from DB
           const userProfile = await fetchProfile(
             session.user.id, 
-            session.user.email || '', 
+            userEmail, 
             session.user.user_metadata
           );
           
           if (isMounted) {
             setProfile(userProfile);
-            
-            console.log('[AUTH] Initial profile loaded:', {
-              email: session.user.email,
-              role: userProfile?.role,
-              isAdmin: userProfile?.role === 'admin'
-            });
-            
-            // Set admin flag in sessionStorage if user is admin
-            if (userProfile?.role === 'admin') {
-              sessionStorage.setItem('bt_is_admin', 'true');
-              console.log('[AUTH] ✅ Admin privileges activated');
-            }
+            console.log('[AUTH] Profile loaded:', userProfile?.role);
           }
         }
-        
-        if (isMounted) setIsLoading(false);
       } catch (err) {
         console.error('[AUTH] Init error:', err);
-        if (isMounted) setIsLoading(false);
+      } finally {
+        // GUARANTEED: Always stop loading
+        if (isMounted) {
+          console.log('[AUTH] ✅ Loading complete');
+          setIsLoading(false);
+        }
       }
     };
 
@@ -478,48 +506,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!isMounted) return;
       
+      // Always update session and user immediately
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Small delay to ensure session is fully established
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const userEmail = session.user.email || '';
         
-        const userProfile = await fetchProfile(
-          session.user.id, 
-          session.user.email || '', 
-          session.user.user_metadata
-        );
+        // ADMIN BYPASS: Instant profile for admin emails
+        if (isAdminEmail(userEmail)) {
+          const adminProfile = createInstantAdminProfile(
+            session.user.id,
+            userEmail,
+            session.user.user_metadata
+          );
+          setProfile(adminProfile);
+          sessionStorage.setItem('bt_is_admin', 'true');
+          setIsLoading(false);
+          console.log('[AUTH] ✅ ADMIN BYPASS on', event);
+          return;
+        }
         
-        if (isMounted) {
-          setProfile(userProfile);
+        // Regular users: fetch profile (with timeout protection)
+        try {
+          const userProfile = await Promise.race([
+            fetchProfile(session.user.id, userEmail, session.user.user_metadata),
+            new Promise<UserProfile | null>((_, reject) => 
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+            )
+          ]);
           
-          console.log('[AUTH] Profile loaded after', event, ':', {
-            email: session.user.email,
-            role: userProfile?.role,
-            isAdmin: userProfile?.role === 'admin'
-          });
-          
-          if (userProfile?.role === 'admin') {
-            sessionStorage.setItem('bt_is_admin', 'true');
-            console.log('[AUTH] ✅ Admin privileges activated for:', session.user.email);
-          } else {
-            sessionStorage.removeItem('bt_is_admin');
+          if (isMounted) {
+            setProfile(userProfile);
+            if (userProfile?.role === 'admin') {
+              sessionStorage.setItem('bt_is_admin', 'true');
+            } else {
+              sessionStorage.removeItem('bt_is_admin');
+            }
           }
+        } catch (err) {
+          console.warn('[AUTH] Profile fetch failed, using local:', err);
+          // Fallback to local profile on timeout/error
+          const localProfile = createLocalProfile(
+            session.user.id,
+            userEmail,
+            session.user.user_metadata
+          );
+          if (isMounted) setProfile(localProfile);
         }
       } else {
-        if (isMounted) {
-          setProfile(null);
-          sessionStorage.removeItem('bt_is_admin');
-        }
+        setProfile(null);
+        sessionStorage.removeItem('bt_is_admin');
       }
+      
+      // Always ensure loading is false after auth change
+      if (isMounted) setIsLoading(false);
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, isAdminEmail, createInstantAdminProfile, createLocalProfile]);
 
   const value: AuthContextValue = {
     user,
