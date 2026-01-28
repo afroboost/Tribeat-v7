@@ -174,26 +174,6 @@ export async function uploadAudioFile(
     error: 'Réponse inattendue du serveur. Réessayez.' 
   };
 }
-      url: publicUrl,
-      path: filePath,
-    };
-  } catch (err) {
-    console.error('[SUPABASE STORAGE] Exception:', err);
-    
-    // Network errors
-    if (err instanceof TypeError && err.message.includes('fetch')) {
-      return { 
-        success: false, 
-        error: 'Erreur réseau. Vérifiez votre connexion internet.' 
-      };
-    }
-    
-    return { 
-      success: false, 
-      error: err instanceof Error ? err.message : 'Erreur inconnue lors de l\'upload' 
-    };
-  }
-}
 
 /**
  * Delete an audio file from Supabase Storage
