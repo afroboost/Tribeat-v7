@@ -322,12 +322,19 @@ export const SessionPage: React.FC = () => {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const socket = useSocket();
-  const { isAdmin, user, isLoading: authLoading } = useAuth();
+  const { isAdmin, user, isLoading: authLoading, isSubscribed } = useAuth();
+  
+  // ADMIN BYPASS: Check email directly for instant host access
+  const userEmail = user?.email?.toLowerCase() || '';
+  const isAdminByEmail = userEmail === 'contact.artboost@gmail.com';
+  const hasHostPrivileges = isAdminByEmail || isAdmin || isSubscribed;
   
   // Debug log for admin access
   console.log('[SESSION] 🎵 SessionPage rendered', { 
     isAdmin, 
-    userEmail: user?.email, 
+    isAdminByEmail,
+    hasHostPrivileges,
+    userEmail, 
     authLoading,
     urlSessionId 
   });
@@ -336,8 +343,17 @@ export const SessionPage: React.FC = () => {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   
   // Track if user created this session (host) or joined via URL (participant)
-  const [isHost, setIsHost] = useState<boolean>(!urlSessionId);
+  // ADMIN/SUBSCRIBER BYPASS: Always host mode for privileged users
+  const [isHost, setIsHost] = useState<boolean>(!urlSessionId || hasHostPrivileges);
   const [sessionId, setSessionId] = useState<string | null>(urlSessionId || null);
+  
+  // Force host mode for admin/subscribers when joining via URL
+  useEffect(() => {
+    if (hasHostPrivileges && urlSessionId && !isHost) {
+      console.log('[SESSION] ⚡ ADMIN/SUBSCRIBER BYPASS - Forcing host mode');
+      setIsHost(true);
+    }
+  }, [hasHostPrivileges, urlSessionId, isHost]);
   
   // Nickname state
   const [nickname, setNickname] = useState<string | null>(null);
