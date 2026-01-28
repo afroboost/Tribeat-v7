@@ -3,95 +3,97 @@
 ## Vision
 **"Unite Through Rhythm"** - Application d'écoute musicale synchronisée en temps réel.
 
-## État Actuel - SDK Supabase Refactoré
+## État Actuel - Autoplay & Repeat Implémentés
 
-### ✅ Refactoring Upload (28 Jan 2026)
-- **SDK Supabase** : Utilisation correcte de `supabase.storage.from().upload()`
-- **Pas de double lecture** : Une seule réponse `{ data, error }` traitée
-- **Barre de progression** : Devient verte à 100% avant le message de succès
-- **Erreurs dynamiques** : Message exact de Supabase affiché
-- **Instructions SQL** : Affichées en console avec couleurs pour copier-coller
+### ✅ Fonctionnalités Ajoutées (28 Jan 2026)
 
-## Configuration Requise
+#### Modes de Répétition
+- **none** : Pas de répétition, passe au suivant automatiquement
+- **all** : Boucle sur la playlist entière
+- **one** : Répète la piste en cours indéfiniment
 
-### Variables d'environnement (déjà configurées)
+#### Autoplay
+- Transition automatique vers le titre suivant
+- Synchronisation avec les participants via Supabase
+- Gestion propre des événements avec cleanup useEffect
+
+### Architecture Technique
+
+```typescript
+// useAudioSync.ts - Nouveau type
+export type RepeatMode = 'none' | 'one' | 'all';
+
+// Cycle: none → all → one → none
+const cycleRepeatMode = () => {
+  setRepeatMode(prev => {
+    switch (prev) {
+      case 'none': return 'all';
+      case 'all': return 'one';
+      case 'one': return 'none';
+    }
+  });
+};
+
+// Gestionnaire onEnded avec cleanup
+useEffect(() => {
+  const audio = audioRef.current;
+  const handleEnded = () => {
+    if (repeatMode === 'one') {
+      audio.currentTime = 0;
+      audio.play();
+    } else {
+      onTrackEnded?.(); // Parent gère next track
+    }
+  };
+  audio.addEventListener('ended', handleEnded);
+  return () => audio.removeEventListener('ended', handleEnded);
+}, [repeatMode, onTrackEnded]);
+```
+
+### Fichiers Modifiés
+
+| Fichier | Modifications |
+|---------|---------------|
+| `useAudioSync.ts` | Ajout RepeatMode, cycleRepeatMode, onTrackEnded callback |
+| `AudioPlayer.tsx` | Bouton Repeat avec Lucide icons (Repeat/Repeat1) |
+| `SessionPage.tsx` | handleTrackEnded pour autoplay + sync |
+
+### Règles Anti-Casse Respectées
+
+- [x] **TrackUploader.tsx** : Non modifié ✅
+- [x] **TypeScript** : Pas de `any`, tout typé ✅
+- [x] **useEffect cleanup** : Fonction de nettoyage pour onEnded ✅
+- [x] **Sync Supabase** : currentTrackIndex synchronisé ✅
+- [x] **Build** : `npm run build` réussi ✅
+
+### UI du Bouton Repeat
+
+```
+Icône     | Mode  | Couleur
+----------|-------|--------
+🔁 (fin)  | none  | Gris (white/40)
+🔁 (gras) | all   | Violet (#8A2EFF)
+🔂 (1)    | one   | Violet (#8A2EFF)
+```
+
+### Test de Régression
+
+- [x] Upload MP3 fonctionne toujours
+- [x] Playlist drag & drop OK
+- [x] Sync multi-appareils OK
+- [x] Modération (mute/eject) OK
+
+## Configuration Supabase
+
 ```env
 REACT_APP_SUPABASE_URL=https://tfghpbgbtpgrjlhomlvz.supabase.co
 REACT_APP_SUPABASE_ANON_KEY=sb_publishable_***
 REACT_APP_SUPABASE_BUCKET=audio-tracks
 ```
 
-### ⚠️ Policies RLS à ajouter dans Supabase SQL Editor
-
-Allez sur : https://supabase.com/dashboard/project/tfghpbgbtpgrjlhomlvz/sql
-
-```sql
--- 1. Policy INSERT (permettre les uploads)
-CREATE POLICY "Allow public uploads"
-ON storage.objects FOR INSERT
-TO anon
-WITH CHECK (bucket_id = 'audio-tracks');
-
--- 2. Policy SELECT (permettre la lecture)
-CREATE POLICY "Allow public read"
-ON storage.objects FOR SELECT
-TO anon
-USING (bucket_id = 'audio-tracks');
-```
-
-## Architecture Upload SDK
-
-```typescript
-// supabaseClient.ts - Approche correcte
-const { data, error } = await supabase.storage
-  .from(AUDIO_BUCKET)
-  .upload(filePath, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type,
-  });
-
-// Une seule lecture, pas de double parsing
-if (error) {
-  // Traitement erreur
-}
-
-if (data?.path) {
-  const { data: urlData } = supabase.storage
-    .from(AUDIO_BUCKET)
-    .getPublicUrl(data.path);
-  // Succès avec urlData.publicUrl
-}
-```
-
-## Gestion des erreurs
-
-| Erreur Supabase | Message affiché |
-|-----------------|-----------------|
-| `not found` / `bucket` | "Bucket introuvable. Créez-le dans Dashboard." |
-| `policy` / `permission` / `403` | "Permission refusée (403). Vérifiez vos politiques SQL RLS." |
-| `too large` / `size` | "Fichier trop volumineux." |
-| `duplicate` | "Un fichier avec ce nom existe déjà." |
-
-## Checklist Complétée
-
-- [x] SDK Supabase utilisé correctement
-- [x] Aucune double lecture du stream
-- [x] Barre de progression verte à 100%
-- [x] Instructions SQL dans console
-- [x] Build réussi sans erreurs
-- [ ] **Test upload réel** (en attente ajout policies RLS)
-
-## Fichiers Modifiés
-
-- `/frontend/src/lib/supabaseClient.ts` - Upload SDK refactoré
-- `/frontend/src/components/audio/TrackUploader.tsx` - Barre verte à 100%
-
-## Test à effectuer
-
-1. **Ajouter les policies SQL** ci-dessus dans Supabase
-2. **Tester un upload MP3** (8 Mo max recommandé)
-3. **Vérifier** que le fichier apparaît dans la playlist
+## Credentials Test
+- **Admin**: `/admin` → MDP: `BEATTRIBE2026`
+- **Preview**: https://beattribe-live.preview.emergentagent.com
 
 ---
-*Dernière mise à jour: 28 Jan 2026 - SDK Supabase refactoré*
+*Dernière mise à jour: 28 Jan 2026 - Autoplay & Repeat implémentés*
