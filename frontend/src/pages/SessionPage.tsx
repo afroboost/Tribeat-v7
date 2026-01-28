@@ -775,7 +775,11 @@ export const SessionPage: React.FC = () => {
 
   // Generate session ID when creating new session
   const handleCreateSession = useCallback(() => {
+    console.log('[SESSION] 🎵 Tentative de création de session...');
+    
     const newSessionId = generateSessionId();
+    console.log('[SESSION] Generated session ID:', newSessionId);
+    
     setSessionId(newSessionId);
     setIsHost(true);
     navigate(`/session/${newSessionId}`, { replace: true });
@@ -788,6 +792,8 @@ export const SessionPage: React.FC = () => {
       setNickname(stored);
       showToast('Session créée ! Partagez le lien avec vos amis.', 'success');
     }
+    
+    console.log('[SESSION] ✅ Session créée avec succès');
   }, [navigate, showToast]);
 
   // Get shareable session URL
