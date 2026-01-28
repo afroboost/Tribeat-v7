@@ -280,32 +280,45 @@ export const TrackUploader: React.FC<TrackUploaderProps> = ({
       {/* Uploading */}
       {status === 'uploading' && (
         <div className={`p-4 rounded-lg bg-white/5 border space-y-3 ${
-          isDemoMode ? 'border-yellow-500/30' : 'border-[#8A2EFF]/30'
+          progress === 100 ? 'border-green-500/30' : isDemoMode ? 'border-yellow-500/30' : 'border-[#8A2EFF]/30'
         }`}>
           <div className="flex items-center gap-3">
-            <Loader2 size={20} strokeWidth={1.5} className={`animate-spin ${
-              isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'
-            }`} />
+            {progress === 100 ? (
+              <CheckCircle size={20} strokeWidth={1.5} className="text-green-400" />
+            ) : (
+              <Loader2 size={20} strokeWidth={1.5} className={`animate-spin ${
+                isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'
+              }`} />
+            )}
             <div className="flex-1">
               <p className="text-white text-sm">
-                {isDemoMode ? 'Simulation en cours...' : 'Upload en cours...'}
+                {progress === 100 
+                  ? 'Finalisation...' 
+                  : isDemoMode 
+                    ? 'Simulation en cours...' 
+                    : 'Upload en cours...'
+                }
               </p>
               <p className="text-white/50 text-xs">{selectedFile?.name}</p>
             </div>
-            <span className={`text-sm font-mono ${isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'}`}>
+            <span className={`text-sm font-mono ${
+              progress === 100 ? 'text-green-400' : isDemoMode ? 'text-yellow-400' : 'text-[#8A2EFF]'
+            }`}>
               {progress}%
             </span>
           </div>
           
-          {/* Progress bar */}
+          {/* Progress bar - turns green at 100% */}
           <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div 
               className="h-full rounded-full transition-all duration-300"
               style={{ 
                 width: `${progress}%`,
-                background: isDemoMode 
-                  ? 'linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)'
-                  : 'linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%)',
+                background: progress === 100
+                  ? 'linear-gradient(90deg, #22c55e 0%, #10b981 100%)'
+                  : isDemoMode 
+                    ? 'linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)'
+                    : 'linear-gradient(90deg, #8A2EFF 0%, #FF2FB3 100%)',
               }}
             />
           </div>
