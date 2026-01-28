@@ -302,23 +302,11 @@ export const HeroSection: React.FC = () => {
           </button>
         </div>
 
-        {/* Secondary CTA */}
-        <div 
-          className="opacity-0"
-          style={{
-            animation: "bt-fade-in 0.8s ease-out 1.2s forwards",
-          }}
-        >
-          <PrimaryButton variant="ghost" size="sm" className="text-white/60 hover:text-white">
-            {buttons.exploreBeats} →
-          </PrimaryButton>
-        </div>
-
         {/* Stats - Dynamic from theme */}
         <div 
           className="grid grid-cols-3 gap-8 mt-16 pt-8 border-t border-white/10 max-w-lg mx-auto opacity-0"
           style={{
-            animation: "bt-fade-in 0.8s ease-out 1.4s forwards",
+            animation: "bt-fade-in 0.8s ease-out 1.2s forwards",
           }}
         >
           {stats.map((stat, index) => (
