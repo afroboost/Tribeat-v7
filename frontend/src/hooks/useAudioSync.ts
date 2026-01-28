@@ -21,6 +21,9 @@ export interface SyncState {
   sessionId: string | null;
 }
 
+// Repeat mode type
+export type RepeatMode = 'none' | 'one' | 'all';
+
 // Broadcast payload type
 export interface BroadcastPayload {
   type: 'STATE_UPDATE' | 'SYNC_REQUEST' | 'SYNC_RESPONSE';
@@ -39,6 +42,7 @@ export interface AudioSyncOptions {
   onStateChange?: (state: AudioState) => void;
   onSyncUpdate?: (syncState: SyncState) => void;
   onBroadcast?: (payload: BroadcastPayload) => void;
+  onTrackEnded?: () => void; // Callback when track ends
 }
 
 interface UseAudioSyncReturn {
@@ -50,6 +54,11 @@ interface UseAudioSyncReturn {
   
   // Sync state
   syncState: SyncState;
+  
+  // Repeat mode
+  repeatMode: RepeatMode;
+  setRepeatMode: (mode: RepeatMode) => void;
+  cycleRepeatMode: () => void;
   
   // Host controls
   play: () => Promise<void>;
