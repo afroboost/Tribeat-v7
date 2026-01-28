@@ -196,6 +196,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Check subscription status
   const checkSubscription = useCallback(async (): Promise<void> => {
     setIsLoading(true);
+    console.log('[SUBSCRIPTION] Checking subscription status...');
 
     // Check localStorage for demo/offline mode
     const storedRole = localStorage.getItem('bt_user_role') as UserRole | null;
@@ -204,8 +205,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // If admin password was entered, set as admin
     const isAdminSession = sessionStorage.getItem('bt_is_admin') === 'true';
+    console.log('[SUBSCRIPTION] isAdminSession:', isAdminSession);
 
     if (isAdminSession) {
+      console.log('[SUBSCRIPTION] ✅ Admin session detected - unlimited access');
       setUser({
         id: 'admin_local',
         email: 'admin@beattribe.app',
