@@ -3,83 +3,100 @@
 ## Vision
 **"Unite Through Rhythm"** - Application d'écoute musicale synchronisée en temps réel.
 
-## État Actuel - Autoplay 100% Fonctionnel
+## État Actuel - Capture Microphone Implémentée
 
-### ✅ Enchaînement Automatique (28 Jan 2026)
+### ✅ Fonctionnalités Microphone (28 Jan 2026)
 
-#### Comportement Hôte
-1. À la fin d'une piste, `handleTrackEnded` est appelé
-2. Calcul du prochain index : `(currentIndex + 1) % tracks.length`
-3. Mise à jour locale + `autoPlayPending` pour forcer la lecture
-4. Broadcast `syncPlaylist` + `syncPlayback` vers les participants
-5. Toast "Enchaînement : [Titre]"
+#### Hook `useMicrophone.ts`
+- Capture audio via `navigator.mediaDevices.getUserMedia`
+- VU Meter temps réel avec AudioContext + AnalyserNode
+- Gestion des erreurs (permission refusée, pas de micro, micro occupé)
+- Contrôle du volume via GainNode
+- Switch de périphérique audio
 
-#### Comportement Participant
-1. Réception de `SYNC_PLAYBACK` via Supabase Realtime
-2. Changement de piste via `setSelectedTrack`
-3. Force `audio.play()` via `document.querySelector('audio')`
-4. Toast "Enchaînement : [Titre]"
+#### Composant `MicrophoneControl.tsx`
+- Bouton Micro avec états visuels (Off/On/Muted)
+- VU Meter segmenté pour feedback visuel
+- Duck Effect : baisse automatique du volume musique quand l'hôte parle
+- Gestion des erreurs avec messages clairs
 
-### Modes de Répétition
+#### Composant `VuMeter.tsx`
+- Indicateur horizontal et vertical
+- Version segmentée (style hardware)
+- Couleurs dynamiques (vert → orange → rouge)
 
-| Mode | Fin de piste | Fin de playlist |
-|------|--------------|-----------------|
-| none | → Suivant | ⏹ Toast "Fin de la playlist" |
-| all | → Suivant | 🔄 Retour au premier |
-| one | 🔂 Rejoue | 🔂 Rejoue |
-
-### Architecture Technique
+### Architecture Duck Effect
 
 ```typescript
-// SessionPage.tsx - Force auto-play après changement
-const [autoPlayPending, setAutoPlayPending] = useState<string | null>(null);
-
-useEffect(() => {
-  if (autoPlayPending && selectedTrack.src === autoPlayPending) {
-    setTimeout(() => {
-      const audioEl = document.querySelector('audio');
-      audioEl?.play();
-      setAutoPlayPending(null);
-    }, 150);
+// SessionPage.tsx
+const handleDuckMusic = useCallback((shouldDuck: boolean) => {
+  const audioEl = document.querySelector('audio');
+  if (shouldDuck && !musicDucked) {
+    originalVolumeRef.current = audioEl.volume;
+    audioEl.volume = audioEl.volume * 0.3; // Duck to 30%
+  } else if (!shouldDuck && musicDucked) {
+    audioEl.volume = originalVolumeRef.current; // Restore
   }
-}, [autoPlayPending, selectedTrack.src]);
-
-// handleTrackEnded - Broadcast aux participants
-if (nextTrack) {
-  setSelectedTrack(nextTrack);
-  setAutoPlayPending(nextTrack.src);
-  socket.syncPlaylist(tracks, nextTrack.id);
-  socket.syncPlayback(true, 0, nextTrack.id);
-}
-
-// Participant - Réception et auto-play
-socket.onPlaybackSync((payload) => {
-  const targetTrack = tracks.find(t => t.id === payload.trackId);
-  if (targetTrack) {
-    setSelectedTrack(targetTrack);
-    setTimeout(() => {
-      document.querySelector('audio')?.play();
-    }, 100);
-  }
-});
+}, [musicDucked]);
 ```
 
-### Checklist Anti-Casse
+### Interface Participant
 
-- [x] **TrackUploader.tsx** : NON MODIFIÉ ✅
-- [x] **Config Supabase** : NON MODIFIÉ ✅
-- [x] **Styles** : Conservés ✅
-- [x] **Cleanup** : Event listeners nettoyés ✅
-- [x] **Playlist vide** : Gestion du cas ✅
-- [x] **Build réussi** : `yarn build` OK ✅
+```typescript
+// ParticipantControls.tsx
+interface Participant {
+  id: string;
+  name: string;
+  avatar: string;
+  isMicActive?: boolean; // Indicateur micro actif
+  audioLevel?: number;   // Pour VU meter
+  // ...
+}
+```
 
-### Test de Régression
+### Gestion des Erreurs Microphone
 
-- [x] Upload MP3 fonctionne
-- [x] Playlist drag & drop OK
-- [x] Modération OK
-- [x] Répétition OK
-- [x] Toast affiché
+| Code | Message affiché |
+|------|-----------------|
+| NotAllowedError | "Accès au microphone refusé" |
+| NotFoundError | "Aucun microphone détecté" |
+| NotReadableError | "Microphone utilisé par une autre app" |
+
+### Fichiers Créés/Modifiés
+
+| Fichier | Description |
+|---------|-------------|
+| `/hooks/useMicrophone.ts` | Hook de capture audio |
+| `/components/audio/VuMeter.tsx` | Indicateur de niveau |
+| `/components/audio/MicrophoneControl.tsx` | Composant UI complet |
+| `/components/audio/ParticipantControls.tsx` | Ajout indicateur mic |
+| `/pages/SessionPage.tsx` | Intégration duck effect |
+
+### Checklist
+
+- [x] Capture via getUserMedia
+- [x] VU Meter fonctionnel
+- [x] Duck Effect implémenté
+- [x] Gestion erreurs propre
+- [x] Build réussi ✅
+
+### Prochaines Étapes WebRTC
+
+Pour la diffusion audio P2P en temps réel :
+1. **Signaling** : Utiliser Supabase Realtime pour l'échange SDP/ICE
+2. **PeerJS** ou **simple-peer** : Pour établir les connexions P2P
+3. **Architecture** :
+   - Hôte → Tous (broadcast voix)
+   - Participant → Hôte (demande de parole)
+
+```
+┌─────────────────┐     Supabase Realtime (signaling)     ┌─────────────────┐
+│      Host       │◄────────────────────────────────────►│   Participant   │
+│                 │                                       │                 │
+│  MediaStream    │         WebRTC P2P (audio)           │  MediaStream    │
+│  (mic capture)  │◄─────────────────────────────────────►│  (playback)     │
+└─────────────────┘                                       └─────────────────┘
+```
 
 ## Configuration
 
@@ -89,15 +106,8 @@ REACT_APP_SUPABASE_ANON_KEY=sb_publishable_***
 REACT_APP_SUPABASE_BUCKET=audio-tracks
 ```
 
-## Test Multi-Appareils
-
-1. **PC (Hôte)** : https://beattribe-live.preview.emergentagent.com/session
-2. **Mobile (Participant)** : Ouvrir le lien de partage
-3. **Lancer la lecture** sur PC
-4. **Laisser la piste finir** → Le mobile doit changer automatiquement
-
 ## Credentials
 - **Admin**: `/admin` → MDP: `BEATTRIBE2026`
 
 ---
-*Dernière mise à jour: 28 Jan 2026 - Autoplay multi-appareils 100% fonctionnel*
+*Dernière mise à jour: 28 Jan 2026 - Capture microphone avec VU Meter et Duck Effect*
