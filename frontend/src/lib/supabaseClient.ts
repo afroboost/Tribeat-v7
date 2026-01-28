@@ -58,15 +58,15 @@ export interface UploadResult {
 
 /**
  * Upload an audio file to Supabase Storage
- * Uses raw File object directly - SDK handles everything
+ * Uses direct fetch API to avoid SDK stream issues
  */
 export async function uploadAudioFile(
   file: File,
   sessionId: string,
   onProgress?: (progress: number) => void
 ): Promise<UploadResult> {
-  // Check Supabase client
-  if (!supabase) {
+  // Check Supabase configuration
+  if (!supabaseUrl || !supabaseAnonKey) {
     console.error('[SUPABASE] ❌ Client non initialisé');
     return { 
       success: false, 
@@ -89,54 +89,53 @@ export async function uploadAudioFile(
   const timestamp = Date.now();
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
   const filePath = `${sessionId}/${timestamp}_${sanitizedName}`;
+  const contentType = file.type || 'audio/mpeg';
 
   console.log('[SUPABASE STORAGE] 📤 Upload:', filePath);
 
   try {
-    // SIMPLE SDK CALL - Let Supabase handle the file directly
-    const { data, error } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .upload(filePath, file);
+    // Use direct fetch API to avoid SDK stream issues
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/${AUDIO_BUCKET}/${filePath}`;
+    
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey,
+        'Content-Type': contentType,
+        'x-upsert': 'false',
+      },
+      body: file,
+    });
 
-    // Handle error
-    if (error) {
-      console.error('[SUPABASE STORAGE] ❌ Erreur:', error.message);
+    // Check response status (NOT reading body)
+    if (!response.ok) {
+      const statusText = response.statusText || 'Upload failed';
+      console.error('[SUPABASE STORAGE] ❌ HTTP Error:', response.status, statusText);
       
-      const errMsg = error.message.toLowerCase();
-      
-      if (errMsg.includes('not found') || errMsg.includes('bucket')) {
+      if (response.status === 404) {
         logBucketConfigInstructions();
         return { success: false, error: 'Bucket introuvable. Vérifiez Supabase Dashboard.' };
       }
       
-      if (errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('403')) {
+      if (response.status === 403 || response.status === 401) {
         logBucketConfigInstructions();
         return { success: false, error: 'Permission refusée. Vérifiez les policies RLS.' };
       }
       
-      if (errMsg.includes('duplicate') || errMsg.includes('already exists')) {
-        return { success: false, error: 'Fichier déjà existant.' };
-      }
-      
-      return { success: false, error: error.message };
+      return { success: false, error: `Erreur ${response.status}: ${statusText}` };
     }
 
-    // Success - get public URL
-    if (data?.path) {
-      const { data: urlData } = supabase.storage
-        .from(AUDIO_BUCKET)
-        .getPublicUrl(data.path);
+    // Success - construct public URL without reading response body
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${AUDIO_BUCKET}/${filePath}`;
+    
+    console.log('[SUPABASE STORAGE] ✅ Upload réussi:', publicUrl);
 
-      console.log('[SUPABASE STORAGE] ✅ Upload réussi:', urlData.publicUrl);
-
-      return {
-        success: true,
-        url: urlData.publicUrl,
-        path: data.path,
-      };
-    }
-
-    return { success: false, error: 'Réponse inattendue du serveur.' };
+    return {
+      success: true,
+      url: publicUrl,
+      path: filePath,
+    };
     
   } catch (err) {
     console.error('[SUPABASE STORAGE] Exception:', err);
