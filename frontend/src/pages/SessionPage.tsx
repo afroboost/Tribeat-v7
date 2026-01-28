@@ -893,6 +893,9 @@ export const SessionPage: React.FC = () => {
               >
                 {isHost ? '👑 Hôte' : '👤 Participant'}
               </Badge>
+
+              {/* Subscription Badge */}
+              <SubscriptionBadge />
             </div>
             
             <div className="flex items-center gap-3">
