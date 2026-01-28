@@ -322,6 +322,33 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     checkSubscription();
   }, [checkSubscription]);
 
+  // Re-check when storage changes (e.g., after admin login)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const isAdminSession = sessionStorage.getItem('bt_is_admin') === 'true';
+      if (isAdminSession && user?.role !== 'admin') {
+        console.log('[SUBSCRIPTION] Storage changed - re-checking subscription');
+        checkSubscription();
+      }
+    };
+
+    // Check on focus (handles navigation from admin page)
+    window.addEventListener('focus', handleStorageChange);
+    
+    // Also check periodically (handles same-tab navigation)
+    const interval = setInterval(() => {
+      const isAdminSession = sessionStorage.getItem('bt_is_admin') === 'true';
+      if (isAdminSession && user?.role !== 'admin') {
+        checkSubscription();
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('focus', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [user?.role, checkSubscription]);
+
   const value: SubscriptionContextValue = {
     user,
     isLoading,
