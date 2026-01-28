@@ -26,8 +26,7 @@ import {
   Eye,
   Check,
   X,
-  Image,
-  AlertTriangle
+  Image
 } from "lucide-react";
 
 // Site settings interface - matches Supabase table
