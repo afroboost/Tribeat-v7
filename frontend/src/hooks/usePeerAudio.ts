@@ -10,26 +10,26 @@ export interface PeerState {
   connectedPeers: string[];
   error: string | null;
   isBroadcasting: boolean;
-  isReady: boolean; // True when PeerJS + stream are both ready
+  isReady: boolean;
 }
 
 export interface UsePeerAudioOptions {
   sessionId: string;
   isHost: boolean;
-  audioStream?: MediaStream | null; // Required for host before connecting
   onPeerConnected?: (peerId: string) => void;
   onPeerDisconnected?: (peerId: string) => void;
   onReceiveAudio?: (stream: MediaStream) => void;
   onError?: (error: string) => void;
-  onReady?: () => void; // Called when host mic is ready for broadcast
+  onReady?: () => void;
 }
 
 export interface UsePeerAudioReturn {
   state: PeerState;
-  connect: () => Promise<boolean>;
+  connect: (stream?: MediaStream | null) => Promise<boolean>;
   disconnect: () => void;
   broadcastAudio: (stream: MediaStream) => void;
   stopBroadcast: () => void;
+  reconnect: () => Promise<boolean>;
   remoteAudioRef: React.RefObject<HTMLAudioElement | null>;
 }
 
@@ -46,14 +46,12 @@ const initialState: PeerState = {
 
 /**
  * Hook for WebRTC audio broadcasting using PeerJS
- * Host broadcasts to all participants, participants receive
- * IMPORTANT: Host must provide audioStream before connecting
+ * SIMPLIFIED: Stream is passed at connect() time, not as prop
  */
 export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
   const {
     sessionId,
     isHost,
-    audioStream,
     onPeerConnected,
     onPeerDisconnected,
     onReceiveAudio,
@@ -72,6 +70,8 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
   const currentStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const dataConnectionsRef = useRef<Map<string, DataConnection>>(new Map());
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 3;
 
   // Update state helper
   const updateState = useCallback((updates: Partial<PeerState>) => {
@@ -84,7 +84,6 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     if (forHost) {
       return `beattribe-host-${cleanSessionId}`;
     }
-    // Participants get unique IDs
     return `beattribe-${cleanSessionId}-${Date.now().toString(36)}`;
   }, [sessionId]);
 
@@ -94,18 +93,31 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     return `beattribe-host-${cleanSessionId}`;
   }, [sessionId]);
 
-  // Connect to PeerJS server
-  const connect = useCallback(async (): Promise<boolean> => {
-    // For HOST: Don't connect if no audio stream is provided
-    if (isHost && !audioStream) {
-      console.log('[WebRTC] ⏳ Host waiting for audio stream before connecting...');
-      updateState({ error: null }); // Clear any previous error
+  /**
+   * Connect to PeerJS server
+   * @param stream - Optional MediaStream for host broadcasting
+   */
+  const connect = useCallback(async (stream?: MediaStream | null): Promise<boolean> => {
+    console.log('[PEER] 🔌 connect() called');
+    console.log('[PEER] DEBUG: isHost =', isHost);
+    console.log('[PEER] DEBUG: Tentative PeerJS avec Stream:', !!stream);
+
+    // For HOST: Require stream
+    if (isHost && !stream) {
+      console.log('[PEER] ⏳ Host: No stream provided, waiting...');
       return false;
     }
 
-    if (peerRef.current) {
-      console.log('[WebRTC] Already connected');
+    if (peerRef.current?.open) {
+      console.log('[PEER] Already connected, peer ID:', peerRef.current.id);
       return true;
+    }
+
+    // Destroy existing peer if not open
+    if (peerRef.current) {
+      console.log('[PEER] Destroying stale peer connection');
+      peerRef.current.destroy();
+      peerRef.current = null;
     }
 
     return new Promise((resolve) => {
@@ -113,20 +125,21 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
         const peerId = generatePeerId(isHost);
         const hostPeerId = getHostPeerId();
 
-        console.log('[WebRTC] Connecting to PeerJS...', { peerId, isHost, hostPeerId });
+        console.log('[PEER] 📡 Creating PeerJS connection...');
+        console.log('[PEER] - Peer ID:', peerId);
+        console.log('[PEER] - Host Peer ID:', hostPeerId);
+        console.log('[PEER] - Role:', isHost ? 'HOST' : 'PARTICIPANT');
 
-        // Create peer with ROBUST STUN/TURN configuration
+        // Create peer with robust STUN servers
         const peer = new Peer(peerId, {
-          debug: 2, // More verbose logging
+          debug: 2,
           config: {
             iceServers: [
-              // Google's public STUN servers
               { urls: 'stun:stun.l.google.com:19302' },
               { urls: 'stun:stun1.l.google.com:19302' },
               { urls: 'stun:stun2.l.google.com:19302' },
               { urls: 'stun:stun3.l.google.com:19302' },
               { urls: 'stun:stun4.l.google.com:19302' },
-              // Additional public STUN servers for better NAT traversal
               { urls: 'stun:stun.stunprotocol.org:3478' },
             ],
           },
@@ -136,35 +149,36 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
         // Handle peer open
         peer.on('open', (id) => {
-          console.log('[WebRTC] ✅ ID PeerJS créé:', id);
+          console.log('[PEER] ✅ PeerJS CONNECTED - ID:', id);
+          reconnectAttempts.current = 0;
+
           updateState({
             isConnected: true,
             peerId: id,
             hostPeerId,
             error: null,
-            isReady: isHost ? true : false, // Host is ready when connected with stream
+            isReady: true,
           });
 
-          // If host and we have a stream, start broadcasting immediately
-          if (isHost && audioStream) {
-            console.log('[WebRTC] Host ready - stream available');
-            currentStreamRef.current = audioStream;
+          // Host: Store stream and signal ready
+          if (isHost && stream) {
+            console.log('[PEER] 🎤 Host ready with stream');
+            currentStreamRef.current = stream;
             onReady?.();
           }
 
-          // If participant, connect to host for data channel
+          // Participant: Connect to host
           if (!isHost) {
-            console.log('[WebRTC] Participant connecting to host:', hostPeerId);
+            console.log('[PEER] 👤 Participant connecting to host:', hostPeerId);
             const dataConn = peer.connect(hostPeerId);
             
             dataConn.on('open', () => {
-              console.log('[WebRTC] Data connection to host established');
+              console.log('[PEER] ✅ Data connection to host established');
               dataConnectionsRef.current.set(hostPeerId, dataConn);
-              updateState({ isReady: true });
             });
 
             dataConn.on('error', (err) => {
-              console.warn('[WebRTC] Data connection error:', err);
+              console.warn('[PEER] ⚠️ Data connection error:', err);
             });
           }
 
@@ -173,19 +187,18 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
         // Handle incoming calls (for participants)
         peer.on('call', (call) => {
-          console.log('[WebRTC] 📞 Incoming call from:', call.peer);
+          console.log('[PEER] 📞 Incoming call from:', call.peer);
           
-          // Auto-answer with empty stream (we only receive)
+          // Auto-answer (participants receive only)
           call.answer();
 
           call.on('stream', (remoteStream) => {
-            console.log('[WebRTC] 🔊 Receiving audio stream');
+            console.log('[PEER] 🔊 Receiving audio stream from host');
             
-            // Play audio through ref element
             if (remoteAudioRef.current) {
               remoteAudioRef.current.srcObject = remoteStream;
               remoteAudioRef.current.play().catch(err => {
-                console.warn('[WebRTC] Autoplay blocked:', err);
+                console.warn('[PEER] ⚠️ Autoplay blocked:', err);
               });
             }
 
@@ -193,7 +206,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
           });
 
           call.on('close', () => {
-            console.log('[WebRTC] Call closed');
+            console.log('[PEER] Call ended');
             if (remoteAudioRef.current) {
               remoteAudioRef.current.srcObject = null;
             }
@@ -202,7 +215,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
         // Handle incoming data connections (for host)
         peer.on('connection', (dataConn) => {
-          console.log('[WebRTC] 📡 Incoming connection from:', dataConn.peer);
+          console.log('[PEER] 📡 New participant connected:', dataConn.peer);
           
           dataConn.on('open', () => {
             dataConnectionsRef.current.set(dataConn.peer, dataConn);
@@ -212,9 +225,9 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
             }));
             onPeerConnected?.(dataConn.peer);
 
-            // If we're already broadcasting, call the new peer
+            // If broadcasting, call the new peer
             if (currentStreamRef.current && isHost) {
-              console.log('[WebRTC] Calling new peer with stream:', dataConn.peer);
+              console.log('[PEER] 📢 Calling new participant:', dataConn.peer);
               const call = peerRef.current?.call(dataConn.peer, currentStreamRef.current);
               if (call) {
                 connectionsRef.current.set(dataConn.peer, call);
@@ -223,6 +236,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
           });
 
           dataConn.on('close', () => {
+            console.log('[PEER] Participant disconnected:', dataConn.peer);
             dataConnectionsRef.current.delete(dataConn.peer);
             connectionsRef.current.delete(dataConn.peer);
             setState(prev => ({
@@ -235,70 +249,91 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
 
         // Handle errors
         peer.on('error', (err) => {
-          console.error('[WebRTC] ❌ Error:', err.type, err.message);
+          console.error('[PEER] ❌ Error:', err.type, '-', err.message);
           
           let errorMessage = 'Erreur de connexion WebRTC';
           
           if (err.type === 'peer-unavailable') {
             errorMessage = isHost 
-              ? 'Impossible de créer la session WebRTC' 
-              : 'L\'hôte n\'est pas encore connecté. Réessayez dans quelques secondes.';
+              ? 'Impossible de créer la session' 
+              : 'L\'hôte n\'est pas encore connecté';
           } else if (err.type === 'network') {
-            errorMessage = 'Erreur réseau WebRTC. Vérifiez votre connexion.';
+            errorMessage = 'Erreur réseau. Vérifiez votre connexion.';
           } else if (err.type === 'unavailable-id') {
-            errorMessage = 'Session WebRTC déjà en cours. Rafraîchissez la page.';
+            errorMessage = 'ID déjà utilisé. Rafraîchissez la page.';
           }
 
           updateState({ error: errorMessage });
           onError?.(errorMessage);
           
-          // Don't resolve false for peer-unavailable (participant might connect before host)
           if (err.type !== 'peer-unavailable') {
             resolve(false);
           }
         });
 
+        // Handle disconnection - attempt reconnect
         peer.on('disconnected', () => {
-          console.log('[WebRTC] Disconnected from server');
-          updateState({ isConnected: false, isReady: false });
+          console.log('[PEER] ⚠️ Disconnected from signaling server');
+          updateState({ isConnected: false });
+
+          // Auto-reconnect
+          if (reconnectAttempts.current < maxReconnectAttempts) {
+            reconnectAttempts.current++;
+            console.log(`[PEER] 🔄 Reconnect attempt ${reconnectAttempts.current}/${maxReconnectAttempts}`);
+            setTimeout(() => {
+              if (peerRef.current && !peerRef.current.destroyed) {
+                peerRef.current.reconnect();
+              }
+            }, 1000 * reconnectAttempts.current);
+          }
         });
 
         peer.on('close', () => {
-          console.log('[WebRTC] Peer closed');
+          console.log('[PEER] Connection closed');
           updateState({ isConnected: false, peerId: null, isReady: false });
         });
 
-        // Timeout for connection
+        // Connection timeout
         setTimeout(() => {
-          if (!state.isConnected && !peerRef.current?.open) {
-            console.warn('[WebRTC] Connection timeout');
+          if (!peerRef.current?.open) {
+            console.warn('[PEER] ⏰ Connection timeout');
             resolve(false);
           }
-        }, 10000);
+        }, 15000);
 
       } catch (err) {
-        console.error('[WebRTC] Connection exception:', err);
-        updateState({ error: 'Erreur lors de la connexion WebRTC' });
+        console.error('[PEER] ❌ Exception:', err);
+        updateState({ error: 'Erreur de connexion' });
         resolve(false);
       }
     });
-  }, [sessionId, isHost, audioStream, generatePeerId, getHostPeerId, updateState, onPeerConnected, onPeerDisconnected, onReceiveAudio, onError, onReady, state.isConnected]);
+  }, [sessionId, isHost, generatePeerId, getHostPeerId, updateState, onPeerConnected, onPeerDisconnected, onReceiveAudio, onError, onReady]);
 
   // Broadcast audio to all connected peers (Host only)
   const broadcastAudio = useCallback((stream: MediaStream) => {
-    if (!isHost || !peerRef.current) {
-      console.warn('[WebRTC] Cannot broadcast: not host or not connected');
+    console.log('[PEER] 📢 broadcastAudio() called');
+    console.log('[PEER] DEBUG: isHost =', isHost);
+    console.log('[PEER] DEBUG: peerRef.current =', !!peerRef.current);
+    console.log('[PEER] DEBUG: stream =', !!stream);
+
+    if (!isHost) {
+      console.warn('[PEER] Not host, cannot broadcast');
+      return;
+    }
+
+    if (!peerRef.current?.open) {
+      console.warn('[PEER] Peer not connected, cannot broadcast');
       return;
     }
 
     currentStreamRef.current = stream;
-
-    console.log('[WebRTC] 📢 Broadcasting to', dataConnectionsRef.current.size, 'peers');
+    const peerCount = dataConnectionsRef.current.size;
+    console.log('[PEER] 📢 Broadcasting to', peerCount, 'participants');
 
     // Call all connected participants
     dataConnectionsRef.current.forEach((_, peerId) => {
       if (!connectionsRef.current.has(peerId)) {
-        console.log('[WebRTC] Calling peer:', peerId);
+        console.log('[PEER] Calling:', peerId);
         const call = peerRef.current!.call(peerId, stream);
         
         call.on('close', () => {
@@ -310,18 +345,18 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     });
 
     updateState({ isBroadcasting: true });
+    console.log('[PEER] ✅ Broadcasting active');
   }, [isHost, updateState]);
 
-  // Stop broadcasting (Host only)
+  // Stop broadcasting
   const stopBroadcast = useCallback(() => {
     if (!isHost) return;
 
-    console.log('[WebRTC] Stopping broadcast');
+    console.log('[PEER] ⏹️ Stopping broadcast');
 
-    // Close all media connections
     connectionsRef.current.forEach((call, peerId) => {
       call.close();
-      console.log('[WebRTC] Closed call to:', peerId);
+      console.log('[PEER] Closed call to:', peerId);
     });
     connectionsRef.current.clear();
 
@@ -329,23 +364,19 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     updateState({ isBroadcasting: false });
   }, [isHost, updateState]);
 
-  // Disconnect from PeerJS
+  // Disconnect
   const disconnect = useCallback(() => {
+    console.log('[PEER] 🔌 Disconnecting...');
     stopBroadcast();
 
-    // Close all data connections
-    dataConnectionsRef.current.forEach((conn) => {
-      conn.close();
-    });
+    dataConnectionsRef.current.forEach((conn) => conn.close());
     dataConnectionsRef.current.clear();
 
-    // Destroy peer
     if (peerRef.current) {
       peerRef.current.destroy();
       peerRef.current = null;
     }
 
-    // Clear remote audio
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
     }
@@ -358,8 +389,16 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
       isReady: false,
     });
 
-    console.log('[WebRTC] Disconnected');
+    console.log('[PEER] ✅ Disconnected');
   }, [stopBroadcast, updateState]);
+
+  // Manual reconnect
+  const reconnect = useCallback(async (): Promise<boolean> => {
+    console.log('[PEER] 🔄 Manual reconnect requested');
+    disconnect();
+    await new Promise(r => setTimeout(r, 500));
+    return connect(currentStreamRef.current);
+  }, [disconnect, connect]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -374,6 +413,7 @@ export function usePeerAudio(options: UsePeerAudioOptions): UsePeerAudioReturn {
     disconnect,
     broadcastAudio,
     stopBroadcast,
+    reconnect,
     remoteAudioRef,
   };
 }
