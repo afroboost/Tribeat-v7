@@ -322,31 +322,56 @@ export const SessionPage: React.FC = () => {
   const [syncState, setSyncState] = useState<SyncState | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
+  const [autoPlayPending, setAutoPlayPending] = useState<string | null>(null);
+
+  // Auto-play effect: when a new track is set via autoplay, force play
+  useEffect(() => {
+    if (autoPlayPending && selectedTrack.src === autoPlayPending) {
+      const timer = setTimeout(() => {
+        const audioEl = document.querySelector('audio');
+        if (audioEl) {
+          audioEl.play().catch(err => {
+            console.warn('[AUTOPLAY HOST] Play blocked:', err);
+          });
+        }
+        setAutoPlayPending(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPlayPending, selectedTrack.src]);
 
   // Handle track ended - autoplay next track with sync
   const handleTrackEnded = useCallback(() => {
     if (!isHost) return; // Only host controls autoplay
     
+    // Safety check: playlist not empty
+    if (tracks.length === 0) {
+      console.warn('[AUTOPLAY] Empty playlist, nothing to do');
+      return;
+    }
+    
     const currentIndex = tracks.findIndex(t => t.id === selectedTrack.id);
     
     // Safety check: ensure index is valid
-    if (currentIndex === -1 || tracks.length === 0) {
-      console.warn('[AUTOPLAY] Invalid track index or empty playlist');
+    if (currentIndex === -1) {
+      console.warn('[AUTOPLAY] Current track not found in playlist');
       return;
     }
     
     let nextTrack: Track | null = null;
+    let shouldLoop = false;
     
     if (repeatMode === 'all') {
       // Loop playlist: go to next, or first if at end
       const nextIndex = (currentIndex + 1) % tracks.length;
       nextTrack = tracks[nextIndex];
-      console.log('[AUTOPLAY] Next track (loop):', nextTrack.title);
+      shouldLoop = nextIndex === 0;
+      console.log('[AUTOPLAY] Mode ALL - Next track:', nextTrack.title, shouldLoop ? '(loop)' : '');
     } else if (repeatMode === 'none') {
       // No repeat: go to next if available
       if (currentIndex < tracks.length - 1) {
         nextTrack = tracks[currentIndex + 1];
-        console.log('[AUTOPLAY] Next track:', nextTrack.title);
+        console.log('[AUTOPLAY] Mode NONE - Next track:', nextTrack.title);
       } else {
         console.log('[AUTOPLAY] Playlist ended');
         showToast('Fin de la playlist', 'default');
@@ -359,20 +384,19 @@ export const SessionPage: React.FC = () => {
       // Update local state
       setSelectedTrack(nextTrack);
       
+      // Mark for auto-play
+      setAutoPlayPending(nextTrack.src);
+      
       // Show feedback toast
-      showToast(`Piste suivante : ${nextTrack.title}`, 'success');
+      showToast(`Enchaînement : ${nextTrack.title}`, 'success');
       
       // Broadcast to participants via Supabase
-      // 1. Sync playlist with new selected track
       socket.syncPlaylist(tracks, nextTrack.id);
-      
-      // 2. Sync playback state (will auto-play)
       socket.syncPlayback(true, 0, nextTrack.id);
       
-      console.log('[AUTOPLAY] Broadcasted to participants:', {
+      console.log('[AUTOPLAY] Broadcasted:', {
         trackId: nextTrack.id,
-        title: nextTrack.title,
-        src: nextTrack.src
+        title: nextTrack.title
       });
     }
   }, [isHost, tracks, selectedTrack.id, repeatMode, socket, showToast]);
