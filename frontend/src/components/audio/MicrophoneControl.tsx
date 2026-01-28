@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Mic, MicOff, Volume2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { Mic, MicOff, Volume2, AlertCircle, Lock, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VuMeterSegmented } from './VuMeter';
 import { useMicrophone } from '@/hooks/useMicrophone';
@@ -28,6 +28,7 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
 }) => {
   const [isDucking, setIsDucking] = useState(false);
   const [showDevices, setShowDevices] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   // Handle audio level for duck effect
   const handleAudioLevel = useCallback((level: number) => {
@@ -45,6 +46,7 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
 
   const {
     state,
+    checkDevices,
     startCapture,
     stopCapture,
     toggleMute,
@@ -71,14 +73,22 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
     }
   }, [state.isCapturing, state.isMuted, audioStream, onStreamReady]);
 
-  // Toggle capture
+  // Toggle capture with device check
   const handleToggleCapture = useCallback(async () => {
     if (state.isCapturing) {
       stopCapture();
     } else {
-      await startCapture();
+      // First check devices, then start capture
+      setIsChecking(true);
+      const { hasDevices } = await checkDevices();
+      setIsChecking(false);
+      
+      if (hasDevices) {
+        await startCapture();
+      }
+      // If no devices, error is already set by checkDevices
     }
-  }, [state.isCapturing, startCapture, stopCapture]);
+  }, [state.isCapturing, startCapture, stopCapture, checkDevices]);
 
   // Refresh devices when expanding
   const handleShowDevices = useCallback(async () => {
@@ -88,6 +98,40 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
     setShowDevices(!showDevices);
   }, [showDevices, refreshDevices]);
 
+  // Get error icon based on error type
+  const getErrorIcon = () => {
+    switch (state.errorType) {
+      case 'permission':
+        return <Lock size={14} className="text-red-400" />;
+      case 'https':
+        return <Lock size={14} className="text-yellow-400" />;
+      case 'device':
+        return <Monitor size={14} className="text-red-400" />;
+      default:
+        return <AlertCircle size={14} className="text-red-400" />;
+    }
+  };
+
+  // Get error background color based on type
+  const getErrorBgClass = () => {
+    switch (state.errorType) {
+      case 'https':
+        return 'bg-yellow-500/10 border-yellow-500/30';
+      default:
+        return 'bg-red-500/10 border-red-500/30';
+    }
+  };
+
+  // Get error text color
+  const getErrorTextClass = () => {
+    switch (state.errorType) {
+      case 'https':
+        return 'text-yellow-400';
+      default:
+        return 'text-red-400';
+    }
+  };
+
   return (
     <div className={`relative ${className}`}>
       <div className="flex items-center gap-2">
@@ -96,6 +140,7 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
           onClick={handleToggleCapture}
           variant="outline"
           size="sm"
+          disabled={isChecking}
           data-testid="mic-toggle-btn"
           className={`
             relative overflow-hidden transition-all
@@ -105,9 +150,15 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
                 : 'border-green-500/50 text-green-400 bg-green-500/10'
               : 'border-white/20 text-white/70 hover:bg-white/10'
             }
+            ${isChecking ? 'opacity-50 cursor-wait' : ''}
           `}
         >
-          {state.isCapturing ? (
+          {isChecking ? (
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : state.isCapturing ? (
             state.isMuted ? (
               <MicOff size={16} strokeWidth={1.5} />
             ) : (
@@ -117,7 +168,7 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
             <Mic size={16} strokeWidth={1.5} />
           )}
           <span className="ml-1.5 text-xs">
-            {state.isCapturing ? (state.isMuted ? 'Muet' : 'On') : 'Micro'}
+            {isChecking ? '...' : state.isCapturing ? (state.isMuted ? 'Muet' : 'On') : 'Micro'}
           </span>
           
           {/* Active indicator */}
@@ -165,11 +216,18 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({
         )}
       </div>
 
-      {/* Error message */}
+      {/* Error message with specific styling based on error type */}
       {state.error && (
-        <div className="absolute top-full left-0 mt-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2 whitespace-nowrap z-50">
-          <AlertCircle size={14} className="text-red-400" />
-          <span className="text-xs text-red-400">{state.error}</span>
+        <div className={`absolute top-full left-0 mt-2 p-3 rounded-lg border flex items-start gap-2 z-50 max-w-xs ${getErrorBgClass()}`}>
+          {getErrorIcon()}
+          <div>
+            <span className={`text-xs ${getErrorTextClass()}`}>{state.error}</span>
+            {state.errorType === 'permission' && (
+              <p className="text-[10px] text-white/50 mt-1">
+                💡 Cliquez sur l'icône 🔒 dans la barre d'adresse
+              </p>
+            )}
+          </div>
         </div>
       )}
 
