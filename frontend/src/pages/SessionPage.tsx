@@ -800,13 +800,13 @@ export const SessionPage: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Host Mic Control */}
+              {/* Host Microphone Control */}
               {isHost && (
-                <HostMicControl
-                  gain={hostMicGain}
-                  isMuted={hostMicMuted}
-                  onGainChange={setHostMicGain}
-                  onMuteToggle={() => setHostMicMuted(!hostMicMuted)}
+                <MicrophoneControl
+                  isHost={true}
+                  onMicActive={setHostMicActive}
+                  onDuckMusic={handleDuckMusic}
+                  duckThreshold={35}
                 />
               )}
               
