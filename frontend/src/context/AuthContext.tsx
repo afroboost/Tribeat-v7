@@ -439,6 +439,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Local reference to avoid null checks
+    const sb = supabase;
     let isMounted = true;
 
     // Get initial session - with GUARANTEED loading end
@@ -446,7 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AUTH] 🔄 Initializing auth...');
       
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await sb.auth.getSession();
         
         if (error) {
           console.error('[AUTH] getSession error:', error.message);
