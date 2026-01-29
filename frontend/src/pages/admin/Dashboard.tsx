@@ -640,6 +640,7 @@ const Dashboard: React.FC = () => {
             { id: 'colors', label: 'Couleurs', icon: <Palette size={16} /> },
             { id: 'buttons', label: 'Boutons & Stats', icon: <Settings size={16} /> },
             { id: 'stripe', label: 'Liens Stripe', icon: <CreditCard size={16} /> },
+            { id: 'plans', label: 'Plans & Prix', icon: <DollarSign size={16} /> },
           ].map(tab => (
             <Button
               key={tab.id}
