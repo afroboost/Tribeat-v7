@@ -181,7 +181,7 @@ const Dashboard: React.FC = () => {
     }
   }, [settings.favicon_url]);
 
-  // Load settings from Supabase with AUTO-HEALING mode (no error banners)
+  // Load settings from Supabase with AUTO-HEALING mode (auto-insert if empty)
   useEffect(() => {
     let isMounted = true;
     
@@ -213,13 +213,54 @@ const Dashboard: React.FC = () => {
         
         if (!isMounted) return;
         
-        // Handle result - AUTO-HEALING: no error display, just use defaults
-        if (error || !data) {
-          console.log('[CMS] No data from Supabase, using defaults (auto-healing)');
+        // AUTO-HEALING: If table is empty (no data, no error), insert default row
+        if (!data && !error) {
+          console.log('[CMS] Table empty, auto-inserting default row...');
+          const { data: insertedData, error: insertError } = await supabase
+            .from('site_settings')
+            .insert([{
+              site_name: DEFAULT_SETTINGS.site_name,
+              site_slogan: DEFAULT_SETTINGS.site_slogan,
+              site_description: DEFAULT_SETTINGS.site_description,
+              site_badge: DEFAULT_SETTINGS.site_badge,
+              favicon_url: DEFAULT_SETTINGS.favicon_url,
+              color_primary: DEFAULT_SETTINGS.color_primary,
+              color_secondary: DEFAULT_SETTINGS.color_secondary,
+              color_background: DEFAULT_SETTINGS.color_background,
+              btn_login: DEFAULT_SETTINGS.btn_login,
+              btn_start: DEFAULT_SETTINGS.btn_start,
+              btn_join: DEFAULT_SETTINGS.btn_join,
+              btn_explore: DEFAULT_SETTINGS.btn_explore,
+              stat_creators: DEFAULT_SETTINGS.stat_creators,
+              stat_beats: DEFAULT_SETTINGS.stat_beats,
+              stat_countries: DEFAULT_SETTINGS.stat_countries,
+              stripe_pro_monthly: DEFAULT_SETTINGS.stripe_pro_monthly,
+              stripe_pro_yearly: DEFAULT_SETTINGS.stripe_pro_yearly,
+              stripe_enterprise_monthly: DEFAULT_SETTINGS.stripe_enterprise_monthly,
+              stripe_enterprise_yearly: DEFAULT_SETTINGS.stripe_enterprise_yearly,
+            }])
+            .select()
+            .single();
+
+          if (insertError) {
+            console.warn('[CMS] Auto-insert failed:', insertError.message);
+            setDbStatus('offline');
+            setSettings(DEFAULT_SETTINGS);
+            setOriginalSettings(DEFAULT_SETTINGS);
+          } else if (insertedData) {
+            console.log('[CMS] ✅ Default row auto-inserted successfully');
+            setSettings(insertedData as SiteSettings);
+            setOriginalSettings(insertedData as SiteSettings);
+            setDbStatus('connected');
+          }
+        } else if (error) {
+          // Table doesn't exist or other error
+          console.log('[CMS] Query error (auto-healing):', error.message);
           setDbStatus('offline');
           setSettings(DEFAULT_SETTINGS);
           setOriginalSettings(DEFAULT_SETTINGS);
         } else {
+          // Data exists
           console.log('[CMS] ✅ Settings loaded from Supabase:', data.site_name);
           setSettings(data as SiteSettings);
           setOriginalSettings(data as SiteSettings);
