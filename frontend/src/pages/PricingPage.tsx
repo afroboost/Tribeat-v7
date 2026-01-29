@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,8 @@ interface Plan {
   isPopular?: boolean;
 }
 
-const PLANS: Plan[] = [
+// Base plans (Stripe links will be injected from settings)
+const BASE_PLANS: Plan[] = [
   {
     id: 'trial',
     name: 'Essai Gratuit',
