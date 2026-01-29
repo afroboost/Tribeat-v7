@@ -136,6 +136,7 @@ const SortableTrackItem: React.FC<SortableTrackItemProps> = ({
             onDeleteSingle(track);
           }}
           className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-all flex-shrink-0"
+          style={{ color: '#EF4444' }}
           title="Supprimer cette piste"
           data-testid={`delete-track-${track.id}`}
           aria-label={`Supprimer ${track.title}`}
