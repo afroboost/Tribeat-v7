@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   EMERGENT BADGE SUPPRESSION - CSS ONLY
+   ============================================ */
+#emergent-badge,
+.emergent-badge,
+.emergent-indicator,
+[id*="emergent"],
+[class*="emergent"],
+iframe[id*="emergent"],
+a[href*="emergent"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+}
+
 /* Beattribe Font Imports */
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
