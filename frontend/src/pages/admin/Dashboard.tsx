@@ -320,60 +320,20 @@ const Dashboard: React.FC = () => {
     setHasChanges(true);
   }, []);
 
-  // Save settings to Supabase - FORCE BRUTE ULTRA-SIMPLE
+  // Save settings - APPEL DIRECT SUPABASE UNIQUEMENT
   const handleSave = useCallback(async () => {
-    if (!isSupabaseConfigured || !supabase) {
-      alert('❌ Supabase non configuré');
-      return;
-    }
-
+    if (!supabase) { alert('Supabase non configuré'); return; }
+    
     setIsSaving(true);
-    
-    // APPEL DIRECT - Pas de variable intermédiaire complexe
-    const { error } = await supabase.from('site_settings').upsert({
-      id: 1,
-      site_name: settings.site_name,
-      site_slogan: settings.site_slogan,
-      site_description: settings.site_description,
-      site_badge: settings.site_badge,
-      favicon_url: settings.favicon_url || '',
-      color_primary: settings.color_primary,
-      color_secondary: settings.color_secondary,
-      color_background: settings.color_background,
-      btn_login: settings.btn_login,
-      btn_start: settings.btn_start,
-      btn_join: settings.btn_join,
-      btn_explore: settings.btn_explore,
-      stat_creators: settings.stat_creators,
-      stat_beats: settings.stat_beats,
-      stat_countries: settings.stat_countries,
-      stripe_pro_monthly: settings.stripe_pro_monthly || '',
-      stripe_pro_yearly: settings.stripe_pro_yearly || '',
-      stripe_enterprise_monthly: settings.stripe_enterprise_monthly || '',
-      stripe_enterprise_yearly: settings.stripe_enterprise_yearly || '',
-      plan_pro_visible: settings.plan_pro_visible,
-      plan_enterprise_visible: settings.plan_enterprise_visible,
-      plan_pro_price_monthly: settings.plan_pro_price_monthly || '9.99',
-      plan_pro_price_yearly: settings.plan_pro_price_yearly || '99.99',
-      plan_enterprise_price_monthly: settings.plan_enterprise_price_monthly || '29.99',
-      plan_enterprise_price_yearly: settings.plan_enterprise_price_yearly || '299.99',
-      default_language: settings.default_language || 'fr',
-    });
-
+    const { error } = await supabase.from('site_settings').upsert({ id: 1, ...settings });
     setIsSaving(false);
-
-    if (error) {
-      alert('❌ Erreur DB: ' + error.message);
-      return;
-    }
-
-    // Succès - mise à jour locale
-    setSettings({ ...settings, id: '1' });
-    setOriginalSettings({ ...settings, id: '1' });
-    setHasChanges(false);
-    setDbStatus('connected');
     
-    alert('✅ Configuration enregistrée !');
+    if (error) alert('Erreur : ' + error.message);
+    else {
+      setHasChanges(false);
+      setDbStatus('connected');
+      alert('✅ Enregistré avec succès !');
+    }
   }, [settings]);
 
 
