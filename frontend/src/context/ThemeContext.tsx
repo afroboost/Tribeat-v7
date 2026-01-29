@@ -124,7 +124,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<BeattribeTheme>(() => {
     const storedTheme = loadStoredTheme();
     if (storedTheme) {
-      return storedTheme;
+      // Force name to Boosttribe (override any cached "Beattribe")
+      return { ...storedTheme, name: initialThemeConfig.name };
     }
     return JSON.parse(JSON.stringify(initialThemeConfig)) as BeattribeTheme;
   });
