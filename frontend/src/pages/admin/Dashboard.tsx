@@ -906,6 +906,164 @@ const Dashboard: React.FC = () => {
           </Card>
         )}
 
+        {/* Plans & Prix Tab */}
+        {activeTab === 'plans' && (
+          <Card className="border-white/10 bg-white/5">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <DollarSign size={20} />
+                Plans & Prix
+              </CardTitle>
+              <CardDescription className="text-white/50">
+                Gérez la visibilité et les prix de vos plans d'abonnement.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Plan Pro */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Zap size={20} className="text-yellow-400" />
+                    <h3 className="text-white font-semibold">Plan Pro</h3>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-white/70 text-sm">Visible</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdate('plan_pro_visible', !settings.plan_pro_visible ? 'true' : 'false');
+                        setSettings(prev => ({ ...prev, plan_pro_visible: !prev.plan_pro_visible }));
+                      }}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        settings.plan_pro_visible ? 'bg-green-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        settings.plan_pro_visible ? 'translate-x-6' : ''
+                      }`} />
+                    </button>
+                    {settings.plan_pro_visible ? (
+                      <Eye size={16} className="text-green-400" />
+                    ) : (
+                      <EyeOff size={16} className="text-white/40" />
+                    )}
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Prix Mensuel (€)</Label>
+                    <Input 
+                      value={settings.plan_pro_price_monthly}
+                      onChange={(e) => handleUpdate('plan_pro_price_monthly', e.target.value)}
+                      placeholder="9.99"
+                      type="number"
+                      step="0.01"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Prix Annuel (€)</Label>
+                    <Input 
+                      value={settings.plan_pro_price_yearly}
+                      onChange={(e) => handleUpdate('plan_pro_price_yearly', e.target.value)}
+                      placeholder="99.99"
+                      type="number"
+                      step="0.01"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Enterprise */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Building2 size={20} className="text-purple-400" />
+                    <h3 className="text-white font-semibold">Plan Enterprise</h3>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-white/70 text-sm">Visible</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdate('plan_enterprise_visible', !settings.plan_enterprise_visible ? 'true' : 'false');
+                        setSettings(prev => ({ ...prev, plan_enterprise_visible: !prev.plan_enterprise_visible }));
+                      }}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        settings.plan_enterprise_visible ? 'bg-green-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        settings.plan_enterprise_visible ? 'translate-x-6' : ''
+                      }`} />
+                    </button>
+                    {settings.plan_enterprise_visible ? (
+                      <Eye size={16} className="text-green-400" />
+                    ) : (
+                      <EyeOff size={16} className="text-white/40" />
+                    )}
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Prix Mensuel (€)</Label>
+                    <Input 
+                      value={settings.plan_enterprise_price_monthly}
+                      onChange={(e) => handleUpdate('plan_enterprise_price_monthly', e.target.value)}
+                      placeholder="29.99"
+                      type="number"
+                      step="0.01"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Prix Annuel (€)</Label>
+                    <Input 
+                      value={settings.plan_enterprise_price_yearly}
+                      onChange={(e) => handleUpdate('plan_enterprise_price_yearly', e.target.value)}
+                      placeholder="299.99"
+                      type="number"
+                      step="0.01"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Globe size={20} className="text-blue-400" />
+                  <h3 className="text-white font-semibold">Langue par défaut</h3>
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { code: 'fr', label: '🇫🇷 Français' },
+                    { code: 'en', label: '🇬🇧 English' },
+                    { code: 'de', label: '🇩🇪 Deutsch' },
+                  ].map(lang => (
+                    <Button
+                      key={lang.code}
+                      variant={settings.default_language === lang.code ? 'default' : 'outline'}
+                      onClick={() => {
+                        handleUpdate('default_language', lang.code);
+                        setSettings(prev => ({ ...prev, default_language: lang.code }));
+                      }}
+                      className={settings.default_language === lang.code 
+                        ? 'bg-blue-500 text-white' 
+                        : 'border-white/20 text-white/70'
+                      }
+                    >
+                      {lang.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-white/10 text-center">
           <p className="text-white/40 text-sm">
