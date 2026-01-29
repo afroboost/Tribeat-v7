@@ -154,8 +154,8 @@ const PricingPage: React.FC = () => {
 
     // If Stripe link exists, redirect directly to Stripe
     if (stripeLink) {
-      // Redirect to Stripe Checkout
-      window.location.href = stripeLink;
+      // Open Stripe Checkout in new tab
+      window.open(stripeLink, '_blank');
     } else {
       // FALLBACK: Use default Stripe links if not configured
       const defaultStripeLinks: Record<string, string> = {
@@ -165,11 +165,15 @@ const PricingPage: React.FC = () => {
       
       const fallbackLink = defaultStripeLinks[plan.id];
       if (fallbackLink) {
-        // Redirect to default Stripe link
-        window.location.href = fallbackLink;
+        // Open default Stripe link in new tab
+        window.open(fallbackLink, '_blank');
       } else {
-        // Navigate to contact page for non-configured plans
-        navigate('/contact');
+        // Navigate to pricing for free trial
+        if (plan.id === 'trial') {
+          navigate('/session');
+        } else {
+          navigate('/contact');
+        }
       }
     }
   };
