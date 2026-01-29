@@ -170,6 +170,60 @@ export async function deleteAudioFile(filePath: string): Promise<boolean> {
 }
 
 /**
+ * Delete multiple tracks from storage
+ * Extracts file path from URL and removes from storage
+ */
+export async function deleteTracks(trackUrls: string[]): Promise<{ success: boolean; deleted: number; errors: string[] }> {
+  const errors: string[] = [];
+  let deleted = 0;
+
+  if (!supabase || !supabaseUrl) {
+    console.warn('[SUPABASE] Not configured, tracks not deleted from storage');
+    return { success: false, deleted: 0, errors: ['Supabase non configuré'] };
+  }
+
+  for (const url of trackUrls) {
+    try {
+      // Extract file path from URL
+      // URL format: https://xxx.supabase.co/storage/v1/object/public/audio-tracks/SESSION_ID/timestamp_filename.mp3
+      const publicPrefix = `/storage/v1/object/public/${AUDIO_BUCKET}/`;
+      const urlObj = new URL(url);
+      const pathIndex = urlObj.pathname.indexOf(publicPrefix);
+      
+      if (pathIndex === -1) {
+        console.warn('[SUPABASE] Invalid track URL format:', url);
+        errors.push(`Format URL invalide: ${url}`);
+        continue;
+      }
+
+      const filePath = urlObj.pathname.substring(pathIndex + publicPrefix.length);
+      console.log('[SUPABASE STORAGE] 🗑️ Deleting:', filePath);
+
+      const { error } = await supabase.storage
+        .from(AUDIO_BUCKET)
+        .remove([filePath]);
+
+      if (error) {
+        console.error('[SUPABASE] Delete error for', filePath, ':', error);
+        errors.push(`Erreur suppression: ${filePath}`);
+      } else {
+        deleted++;
+        console.log('[SUPABASE STORAGE] ✅ Deleted:', filePath);
+      }
+    } catch (err) {
+      console.error('[SUPABASE] Delete exception:', err);
+      errors.push(err instanceof Error ? err.message : 'Erreur inconnue');
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    deleted,
+    errors,
+  };
+}
+
+/**
  * List all audio files in a session folder
  */
 export async function listSessionFiles(sessionId: string): Promise<string[]> {
