@@ -40,34 +40,37 @@ Application web de sessions d'écoute musicale synchronisée. Permet à un hôte
 
 ## Changements - Session du 29/01/2025
 
-### Renommage Global
-- ✅ "Beattribe" → "Boosttribe" dans tous les fichiers
+### Renommage Global "Boosttribe"
+- ✅ "Beattribe" → "Boosttribe" dans tous les fichiers source
+- ✅ **NOUVEAU** : Force "Boosttribe" dans `useSiteSettings.ts` même si Supabase contient "Beattribe"
 - Fichiers modifiés :
-  - `index.html` (title, meta)
+  - `index.html` (title, meta description)
   - `theme.json` (name)
-  - `Dashboard.tsx` (DEFAULT_SETTINGS)
-  - `useSiteSettings.ts` (DEFAULT_SETTINGS)
+  - `Dashboard.tsx` (DEFAULT_SETTINGS, handleSave)
+  - `useSiteSettings.ts` (DEFAULT_SETTINGS + safeSettings force override)
   - `ChatBot.tsx` (messages du bot)
   - `I18nContext.tsx` (localStorage key)
+  - `ThemeContext.tsx` (force name override)
   - `PricingPage.tsx`, `LoginPage.tsx`, `FeaturesPage.tsx`
 
-### Fix CMS handleSave
-- ✅ Remplacement complet de la fonction
-- Utilisation de `supabase.upsert()` direct
-- Aucun appel `.json()` ou `.text()` sur la réponse
-- Alert "✅ Boosttribe synchronisé !" + reload
+### Fix CMS handleSave - CONNEXION RÉELLE SUPABASE
+- ✅ Utilisation de `supabase.from('site_settings').upsert()` direct
+- ✅ Force `site_name: 'Boosttribe'` en premier dans l'upsert
+- ✅ Messages d'alerte : "ERREUR RÉELLE DB : ..." ou "✅ RÉUSSITE : Les données sont maintenant dans Supabase !"
+- ✅ Aucun appel `.json()` ou `.text()` sur la réponse
 
 ### Suppression Badge Emergent
 - ✅ CSS permanent dans `<head>` de index.html
 - Ciblage : iframe[src*="emergent"], #emergent-badge, etc.
 
 ### LanguageSelector Unifié
-- ✅ Composant visible sur toutes les pages
-- Présent dans Header.tsx et Dashboard.tsx header
+- ✅ Composant visible sur TOUTES les pages (Homepage, Admin, Session)
+- ✅ Hors de toute condition `if(user)` ou `if(admin)`
+- Présent dans Header.tsx (ligne 121) et Dashboard.tsx header (ligne 429)
 
 ### ChatBot Pro Restriction
-- ✅ Message "Assistant Boosttribe réservé aux membres PRO."
-- Accès bloqué pour utilisateurs non-Pro
+- ✅ Message "Assistant Boosttribe réservé aux membres PRO." pour utilisateurs non-Pro
+- Accès bloqué si `subscription_status !== 'pro'`
 
 ## Base de Données (Supabase)
 
