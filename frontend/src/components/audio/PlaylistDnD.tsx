@@ -117,7 +117,7 @@ const SortableTrackItem: React.FC<SortableTrackItemProps> = ({
 
 interface PlaylistDnDProps {
   tracks: Track[];
-  selectedTrack: Track;
+  selectedTrack: Track | null;
   onTrackSelect: (track: Track) => void;
   onReorder: (tracks: Track[]) => void;
   isHost: boolean;
