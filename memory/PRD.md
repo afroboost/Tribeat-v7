@@ -24,9 +24,10 @@
 
 #### 3. UI de Suppression de Pistes - AMÉLIORÉE ✅
 - **Fichier**: `/app/frontend/src/components/audio/PlaylistDnD.tsx`
-- Icône Trash2 **toujours visible** quand l'hôte a des pistes (pas juste au hover)
-- Bouton "Modifier" avec style visible (fond blanc/10, bordure)
-- `data-testid` ajoutés pour les tests
+- Icône Trash2 **toujours visible** avec couleur rouge/rose pour meilleure visibilité
+- Bouton "Modifier" avec style violet (#8A2EFF) pour meilleure visibilité et cohérence
+- `data-testid` et `aria-label` ajoutés pour les tests et accessibilité
+- Protection anti-undefined dans `SessionPage.tsx` pour la synchronisation playlist
 
 #### 4. Domaine de Production - CONFIGURÉ ✅
 - **Fichier**: `/app/frontend/src/context/AuthContext.tsx`
