@@ -351,6 +351,14 @@ const Dashboard: React.FC = () => {
         stripe_pro_yearly: settings.stripe_pro_yearly || '',
         stripe_enterprise_monthly: settings.stripe_enterprise_monthly || '',
         stripe_enterprise_yearly: settings.stripe_enterprise_yearly || '',
+        // Plan visibility & pricing
+        plan_pro_visible: settings.plan_pro_visible,
+        plan_enterprise_visible: settings.plan_enterprise_visible,
+        plan_pro_price_monthly: settings.plan_pro_price_monthly || '9.99',
+        plan_pro_price_yearly: settings.plan_pro_price_yearly || '99.99',
+        plan_enterprise_price_monthly: settings.plan_enterprise_price_monthly || '29.99',
+        plan_enterprise_price_yearly: settings.plan_enterprise_price_yearly || '299.99',
+        default_language: settings.default_language || 'fr',
       };
 
       console.log('[CMS] DATA_SENT', upsertData);
