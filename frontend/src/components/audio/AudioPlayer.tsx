@@ -23,6 +23,7 @@ interface AudioPlayerProps {
   onTrackEnded?: () => void;
   onRepeatModeChange?: (mode: RepeatMode) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -37,6 +38,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onTrackEnded,
   onRepeatModeChange,
   className = '',
+  disabled = false,
 }) => {
   const {
     audioRef,
