@@ -22,8 +22,9 @@ import { isSupabaseConfigured, deleteTracks } from '@/lib/supabaseClient';
 // LocalStorage key for nickname
 const NICKNAME_STORAGE_KEY = 'bt_nickname';
 
-// Empty playlist by default - delete icons appear when user uploads tracks
-const DEMO_TRACKS: Track[] = [];
+// ⚠️ SUPPRESSION DÉFINITIVE DES DÉMOS
+// La playlist démarre TOUJOURS vide - pas de fallback, pas de données de test
+// Les pistes ne peuvent être ajoutées que par upload utilisateur
 
 // Empty participants list - real participants will join via session link
 const BASE_PARTICIPANTS: Participant[] = [];
@@ -344,8 +345,8 @@ export const SessionPage: React.FC = () => {
   // Remote mute state (controlled by host)
   const [isRemoteMuted, setIsRemoteMuted] = useState(false);
   
-  // Playlist state (draggable)
-  const [tracks, setTracks] = useState<Track[]>(DEMO_TRACKS);
+  // Playlist state - TOUJOURS vide au démarrage, jamais de fallback
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   
   // Participants state with volume/mute controls
