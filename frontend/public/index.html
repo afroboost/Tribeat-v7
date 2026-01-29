@@ -5,66 +5,133 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="Beattribe - Unite Through Rhythm. La communauté des beatmakers et producteurs." />
-        <!--
-        manifest.json provides metadata used when your web app is installed on a
-        user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-        -->
-        <!--
-        Notice the use of %PUBLIC_URL% in the tags above.
-        It will be replaced with the URL of the `public` folder during the build.
-        Only files inside the `public` folder can be referenced from the HTML.
-
-        Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-        work correctly both with client-side routing and a non-root public URL.
-        Learn how to configure a non-root public URL by running `npm run build`.
-        -->
         <title>Beattribe</title>
-        <!-- HIDE EMERGENT BADGE VIA CSS -->
-        <style>
+        
+        <!-- AGGRESSIVE BADGE REMOVAL - PRIORITY HIGHEST -->
+        <style id="emergent-killer-css">
+            /* Kill ALL emergent-related elements */
             #emergent-badge,
+            .emergent-badge,
             [id*="emergent"],
-            a[href*="emergent.sh"] {
+            [class*="emergent"],
+            [data-emergent],
+            a[href*="emergent"],
+            div[style*="Made with"],
+            *[style*="emergent"] {
                 display: none !important;
                 visibility: hidden !important;
                 opacity: 0 !important;
                 pointer-events: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+                z-index: -9999 !important;
+            }
+            /* Kill fixed position badges at bottom */
+            body > div[style*="fixed"][style*="bottom"],
+            body > a[style*="fixed"][style*="bottom"] {
+                display: none !important;
             }
         </style>
+        
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
-        <!--
-        These two scripts have been added for the Visual Edits, please do not edit or remove them
-        -->
+        
         <script>
             // Only load visual edit scripts when inside an iframe
             if (window.self !== window.top) {
-                // Load debug monitor script
                 var debugMonitorScript = document.createElement('script');
                 debugMonitorScript.src = 'https://assets.emergent.sh/scripts/debug-monitor.js';
                 document.head.appendChild(debugMonitorScript);
 
-                // Configure Tailwind
                 window.tailwind = window.tailwind || {};
-                tailwind.config = {
-                    corePlugins: { preflight: false },
-                };
+                tailwind.config = { corePlugins: { preflight: false } };
 
-                // Load Tailwind CDN
                 var tailwindScript = document.createElement('script');
                 tailwindScript.src = 'https://cdn.tailwindcss.com';
                 document.head.appendChild(tailwindScript);
             }
             
-            // REMOVE EMERGENT BADGE FROM DOM
-            function removeEmergentBadge() {
-                var badge = document.getElementById('emergent-badge');
-                if (badge) badge.remove();
-                var allBadges = document.querySelectorAll('[id*="emergent"], a[href*="emergent.sh"]');
-                allBadges.forEach(function(el) { el.remove(); });
-            }
-            // Run on load and periodically
-            document.addEventListener('DOMContentLoaded', removeEmergentBadge);
-            window.addEventListener('load', removeEmergentBadge);
-            setInterval(removeEmergentBadge, 500);
+            // NUCLEAR BADGE REMOVAL - runs continuously
+            (function() {
+                function killBadge() {
+                    // Method 1: Direct ID removal
+                    var badge = document.getElementById('emergent-badge');
+                    if (badge) { badge.parentNode.removeChild(badge); }
+                    
+                    // Method 2: Query all possible selectors
+                    var selectors = [
+                        '#emergent-badge',
+                        '.emergent-badge', 
+                        '[id*="emergent"]',
+                        '[class*="emergent"]',
+                        'a[href*="emergent"]',
+                        '[data-emergent]'
+                    ];
+                    selectors.forEach(function(sel) {
+                        try {
+                            document.querySelectorAll(sel).forEach(function(el) {
+                                el.parentNode.removeChild(el);
+                            });
+                        } catch(e) {}
+                    });
+                    
+                    // Method 3: Find by text content "Made with Emergent"
+                    document.querySelectorAll('a, div, span').forEach(function(el) {
+                        if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
+                            el.parentNode.removeChild(el);
+                        }
+                    });
+                    
+                    // Method 4: Find fixed position elements at bottom
+                    document.querySelectorAll('body > *').forEach(function(el) {
+                        var style = window.getComputedStyle(el);
+                        if (style.position === 'fixed' && style.bottom !== 'auto' && parseInt(style.bottom) < 50) {
+                            var text = el.textContent || '';
+                            if (text.includes('Emergent') || text.includes('Made with')) {
+                                el.parentNode.removeChild(el);
+                            }
+                        }
+                    });
+                }
+                
+                // Run immediately
+                killBadge();
+                
+                // Run on DOM ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', killBadge);
+                }
+                
+                // Run on window load
+                window.addEventListener('load', killBadge);
+                
+                // Run every 100ms for 10 seconds, then every 500ms
+                var count = 0;
+                var interval = setInterval(function() {
+                    killBadge();
+                    count++;
+                    if (count > 100) {
+                        clearInterval(interval);
+                        setInterval(killBadge, 500);
+                    }
+                }, 100);
+                
+                // MutationObserver to catch dynamic insertions
+                var observer = new MutationObserver(function(mutations) {
+                    killBadge();
+                });
+                
+                function startObserver() {
+                    if (document.body) {
+                        observer.observe(document.body, { childList: true, subtree: true });
+                    } else {
+                        setTimeout(startObserver, 10);
+                    }
+                }
+                startObserver();
+            })();
         </script>
     </head>
     <body>

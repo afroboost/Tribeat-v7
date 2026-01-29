@@ -128,18 +128,18 @@ const SortableTrackItem: React.FC<SortableTrackItemProps> = ({
         </div>
       </button>
 
-      {/* Delete Button - Always visible with subtle style, prominent on hover */}
+      {/* Delete Button - ALWAYS VISIBLE for host (not in edit mode) */}
       {isHost && !isEditMode && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onDeleteSingle(track);
           }}
-          className="p-1.5 text-zinc-500 opacity-70 hover:opacity-100 hover:text-red-400 transition-all flex-shrink-0"
-          title="Supprimer"
+          className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex-shrink-0"
+          title="Supprimer cette piste"
           data-testid={`delete-track-${track.id}`}
         >
-          <Trash2 size={16} strokeWidth={1.5} />
+          <Trash2 size={18} strokeWidth={1.5} />
         </button>
       )}
 
@@ -248,7 +248,7 @@ export const PlaylistDnD: React.FC<PlaylistDnDProps> = ({
           {displayTracks.length} / {maxTracks} titres
         </p>
         
-        {/* Edit Mode Controls */}
+        {/* Edit Mode Controls - ALWAYS show Modifier button when host has tracks */}
         {isHost && displayTracks.length > 0 && (
           <div className="flex items-center gap-2">
             {isEditMode ? (
@@ -257,14 +257,16 @@ export const PlaylistDnD: React.FC<PlaylistDnDProps> = ({
                 {hasChecked && (
                   <button
                     onClick={handleDeleteSelected}
-                    className="text-xs px-2 py-1 text-red-400 hover:text-red-300 transition-colors"
+                    className="text-xs px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-md transition-colors"
+                    data-testid="delete-selected-btn"
                   >
                     Supprimer ({checkedIds.size})
                   </button>
                 )}
                 <button
                   onClick={handleExitEditMode}
-                  className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                  className="text-xs px-3 py-1.5 text-white/50 hover:text-white/70 hover:bg-white/10 rounded-md transition-colors"
+                  data-testid="cancel-edit-btn"
                 >
                   Annuler
                 </button>
@@ -272,7 +274,8 @@ export const PlaylistDnD: React.FC<PlaylistDnDProps> = ({
             ) : (
               <button
                 onClick={() => setIsEditMode(true)}
-                className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                className="text-xs px-3 py-1.5 bg-white/10 text-white/60 hover:text-white hover:bg-white/20 rounded-md transition-colors border border-white/10"
+                data-testid="edit-mode-btn"
               >
                 Modifier
               </button>
