@@ -117,8 +117,8 @@ export const Header: React.FC = () => {
 
           {/* CTA Buttons */}
           <div className="flex items-center gap-3">
-            {/* Language Selector */}
-            <LanguageSelector className="hidden sm:flex" />
+            {/* Language Selector - TOUJOURS VISIBLE */}
+            <LanguageSelector className="flex" />
             
             {isAuthenticated ? (
               <>
