@@ -146,6 +146,13 @@ UPDATE profiles SET role = 'admin' WHERE email = 'admin@votredomaine.com';
 
 ## Mises à jour récentes (29 Jan 2026)
 
+### ✅ Suppression de Pistes (nouveau)
+1. **Suppression individuelle** - Icône Trash2 discrète (gris zinc-500) visible au survol
+2. **Mode sélection** - Bouton "Modifier" apparaît quand la playlist n'est pas vide
+3. **Suppression multiple** - Checkboxes + "Supprimer (n)" pour suppression groupée
+4. **Suppression Storage Supabase** - Fonction `deleteTracks()` supprime les fichiers physiques
+5. **Confirmation native** - `window.confirm()` avant chaque suppression
+
 ### ✅ Purge Branding & Données de Test
 1. **Badge "Made with Emergent" supprimé** - Retiré de `index.html`
 2. **Morceaux de test supprimés** - "Midnight Groove", "Urban Pulse", "Summer Vibes" retirés
