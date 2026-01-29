@@ -96,6 +96,14 @@ function safeSettings(data: Record<string, unknown> | null): SiteSettings {
       stripe_pro_yearly: String(data.stripe_pro_yearly ?? ''),
       stripe_enterprise_monthly: String(data.stripe_enterprise_monthly ?? ''),
       stripe_enterprise_yearly: String(data.stripe_enterprise_yearly ?? ''),
+      // Plan visibility & pricing - SAFE: returns defaults if missing
+      plan_pro_visible: data.plan_pro_visible !== false,
+      plan_enterprise_visible: data.plan_enterprise_visible !== false,
+      plan_pro_price_monthly: String(data.plan_pro_price_monthly ?? '9.99'),
+      plan_pro_price_yearly: String(data.plan_pro_price_yearly ?? '99.99'),
+      plan_enterprise_price_monthly: String(data.plan_enterprise_price_monthly ?? '29.99'),
+      plan_enterprise_price_yearly: String(data.plan_enterprise_price_yearly ?? '299.99'),
+      default_language: String(data.default_language ?? 'fr'),
     };
   } catch (err) {
     console.warn('[SiteSettings] safeSettings error:', err);
