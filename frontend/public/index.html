@@ -258,7 +258,7 @@
         <!-- FALLBACK BADGE KILLER - Runs after all other scripts -->
         <script>
             // Final cleanup for any badge that escaped earlier removal
-            (function finalBadgeKill() {
+            function _killEmergentBadge() {
                 var targets = [
                     '#emergent-badge',
                     '.emergent-badge',
@@ -277,17 +277,22 @@
                 
                 // Scan for text "Made with Emergent"
                 document.querySelectorAll('body *').forEach(function(el) {
-                    if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
-                        el.style.cssText = 'display:none!important;';
-                        if (el.parentNode) el.parentNode.removeChild(el);
-                    }
+                    try {
+                        if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
+                            el.style.cssText = 'display:none!important;';
+                            if (el.parentNode) el.parentNode.removeChild(el);
+                        }
+                    } catch(e) {}
                 });
-            })();
+            }
+            
+            // Run immediately
+            _killEmergentBadge();
             
             // Re-run on any mutation
-            if (typeof MutationObserver !== 'undefined') {
+            if (typeof MutationObserver !== 'undefined' && document.body) {
                 new MutationObserver(function() {
-                    setTimeout(finalBadgeKill, 0);
+                    _killEmergentBadge();
                 }).observe(document.body, { childList: true, subtree: true });
             }
         </script>
