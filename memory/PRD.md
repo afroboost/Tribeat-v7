@@ -144,12 +144,35 @@ UPDATE profiles SET role = 'admin' WHERE email = 'admin@votredomaine.com';
 - **Session**: `/session`
 - **Admin**: `/admin`
 
+## Mises à jour récentes (29 Jan 2026)
+
+### ✅ Purge Branding & Données de Test
+1. **Badge "Made with Emergent" supprimé** - Retiré de `index.html`
+2. **Morceaux de test supprimés** - "Midnight Groove", "Urban Pulse", "Summer Vibes" retirés
+3. **Participants mock supprimés** - Sarah K., Alex M., Emma L. retirés
+4. **Playlist vide par défaut** - Les sessions démarrent sans pistes
+
+### ✅ Fix "Rejoindre la tribu"
+- Tunnel d'accès réparé : saisir un code → redirection vers `/session/[CODE]`
+- Fonctionne correctement pour les participants
+
+### ✅ Gestion Playlist Vide
+- Message "Playlist vide" affiché quand aucune piste
+- Instruction "Uploadez votre premier morceau pour démarrer la session"
+- Auto-sélection de la première piste uploadée
+
+---
+
 ## Tâches Restantes
 
-### P1 - Configuration Supabase
+### P0 - En attente de configuration utilisateur
+- [ ] Configuration domaine `www.boosttribe.pro`
+- [ ] Mise à jour des redirect URLs OAuth dans Supabase
+
+### P1 - Bugs à vérifier
+- [ ] Upload MP3 (erreur "body stream already read" - fix en attente de validation)
 - [ ] Créer table `profiles` dans Supabase
 - [ ] Activer Google Auth Provider
-- [ ] Créer l'utilisateur admin
 
 ### P2 - Stripe
 - [ ] Créer Payment Links dans Stripe Dashboard
@@ -158,6 +181,8 @@ UPDATE profiles SET role = 'admin' WHERE email = 'admin@votredomaine.com';
 ### P3 - Backlog
 - [ ] Dashboard utilisateur (historique, factures)
 - [ ] Analytics abonnements
+- [ ] Refactoriser SessionPage.tsx
+- [ ] Convertir composants UI en TypeScript
 
 ---
-*Dernière mise à jour: 28 Jan 2026 - Authentification Supabase complète*
+*Dernière mise à jour: 29 Jan 2026 - Purge branding et données de test*
