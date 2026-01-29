@@ -1184,6 +1184,7 @@ export const SessionPage: React.FC = () => {
                     selectedTrack={selectedTrack}
                     onTrackSelect={handleTrackSelectWithSync}
                     onReorder={handlePlaylistReorder}
+                    onDeleteTracks={handleDeleteTracks}
                     isHost={isHost}
                     maxTracks={10}
                   />
