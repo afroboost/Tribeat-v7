@@ -7,6 +7,27 @@
 
 ## Dernières Corrections - 29 Jan 2026 ✅
 
+### 🟢 STRIPE & ESSAI GRATUIT - IMPLÉMENTÉ
+
+#### 5. Intégration Stripe - CONFIGURÉ ✅
+- **Fichier**: `/app/frontend/src/pages/PricingPage.tsx`
+- Les liens Stripe sont maintenant chargés depuis `site_settings` (Admin Dashboard)
+- Redirection directe vers Stripe (`window.location.href`) au lieu de `window.open`
+- Si liens non configurés, message d'alerte informatif pour l'admin
+
+#### 6. Essai Gratuit 5 Minutes - IMPLÉMENTÉ ✅
+- **Fichier**: `/app/frontend/src/pages/SessionPage.tsx`
+- Timer visible avec barre de progression pour utilisateurs non abonnés
+- Lecture automatiquement mise en pause après 300 secondes
+- Message "Limite d'essai atteinte" avec CTA vers /pricing
+- Les utilisateurs abonnés ne voient pas le timer
+
+#### 7. Hook useSiteSettings - ÉTENDU ✅
+- **Fichier**: `/app/frontend/src/hooks/useSiteSettings.ts`
+- Ajout des champs `stripe_pro_monthly`, `stripe_pro_yearly`, `stripe_enterprise_monthly`, `stripe_enterprise_yearly`
+
+---
+
 ### 🔴 CORRECTIONS CRITIQUES APPLIQUÉES
 
 #### 1. Badge "Made with Emergent" - SUPPRIMÉ ✅
