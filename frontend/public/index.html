@@ -217,5 +217,42 @@
                 },
             });
         </script>
+        
+        <!-- FALLBACK BADGE KILLER - Runs after all other scripts -->
+        <script>
+            // Final cleanup for any badge that escaped earlier removal
+            (function finalBadgeKill() {
+                var targets = [
+                    '#emergent-badge',
+                    '.emergent-badge',
+                    '.emergent-indicator',
+                    '[id*="emergent"]',
+                    '[class*="emergent"]'
+                ];
+                targets.forEach(function(sel) {
+                    try {
+                        document.querySelectorAll(sel).forEach(function(el) {
+                            el.style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;';
+                            if (el.parentNode) el.parentNode.removeChild(el);
+                        });
+                    } catch(e) {}
+                });
+                
+                // Scan for text "Made with Emergent"
+                document.querySelectorAll('body *').forEach(function(el) {
+                    if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
+                        el.style.cssText = 'display:none!important;';
+                        if (el.parentNode) el.parentNode.removeChild(el);
+                    }
+                });
+            })();
+            
+            // Re-run on any mutation
+            if (typeof MutationObserver !== 'undefined') {
+                new MutationObserver(function() {
+                    setTimeout(finalBadgeKill, 0);
+                }).observe(document.body, { childList: true, subtree: true });
+            }
+        </script>
     </body>
 </html>
