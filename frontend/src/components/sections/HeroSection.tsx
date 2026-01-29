@@ -178,7 +178,7 @@ export const HeroSection: React.FC = () => {
           </h1>
         </div>
 
-        {/* Slogan - Dynamic from theme */}
+        {/* Slogan - Dynamic from translation */}
         <p 
           className="text-xl sm:text-2xl md:text-3xl font-medium mb-4 opacity-0"
           style={{
@@ -187,10 +187,10 @@ export const HeroSection: React.FC = () => {
             animation: "bt-fade-in 0.8s ease-out 0.6s forwards",
           }}
         >
-          {slogan}
+          {t('hero.title')}
         </p>
 
-        {/* Description - Dynamic from theme */}
+        {/* Description - Dynamic from translation */}
         <p 
           className="text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed opacity-0"
           style={{
@@ -199,7 +199,7 @@ export const HeroSection: React.FC = () => {
             animation: "bt-fade-in 0.8s ease-out 0.8s forwards",
           }}
         >
-          {description}
+          {t('hero.subtitle')}
         </p>
 
         {/* Session Join Form */}
