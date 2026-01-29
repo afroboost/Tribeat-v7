@@ -20,6 +20,11 @@ interface SiteSettings {
   stat_creators: string;
   stat_beats: string;
   stat_countries: string;
+  // Stripe Payment Links
+  stripe_pro_monthly: string;
+  stripe_pro_yearly: string;
+  stripe_enterprise_monthly: string;
+  stripe_enterprise_yearly: string;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
