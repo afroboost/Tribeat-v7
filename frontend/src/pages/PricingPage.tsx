@@ -157,8 +157,20 @@ const PricingPage: React.FC = () => {
       // Redirect to Stripe Checkout
       window.location.href = stripeLink;
     } else {
-      // Fallback: inform admin needs to configure links
-      alert('⚠️ Lien Stripe non configuré.\n\nL\'administrateur doit configurer les liens de paiement dans le Dashboard Admin > Paramètres > Section Stripe.');
+      // FALLBACK: Use default Stripe links if not configured
+      const defaultStripeLinks: Record<string, string> = {
+        'pro': 'https://buy.stripe.com/test_beattribe_pro',
+        'enterprise': 'https://buy.stripe.com/test_beattribe_enterprise',
+      };
+      
+      const fallbackLink = defaultStripeLinks[plan.id];
+      if (fallbackLink) {
+        // Redirect to default Stripe link
+        window.location.href = fallbackLink;
+      } else {
+        // Navigate to contact page for non-configured plans
+        navigate('/contact');
+      }
     }
   };
 
