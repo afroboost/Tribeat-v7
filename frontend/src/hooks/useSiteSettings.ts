@@ -74,9 +74,15 @@ function safeSettings(data: Record<string, unknown> | null): SiteSettings {
   if (!data) return DEFAULT_SETTINGS;
   
   try {
+    // Force "Boosttribe" si la DB contient encore "Beattribe"
+    let siteName = String(data.site_name ?? DEFAULT_SETTINGS.site_name);
+    if (siteName.toLowerCase() === 'beattribe') {
+      siteName = 'Boosttribe';
+    }
+    
     return {
       id: String(data.id ?? ''),
-      site_name: String(data.site_name ?? DEFAULT_SETTINGS.site_name),
+      site_name: siteName,
       site_slogan: String(data.site_slogan ?? DEFAULT_SETTINGS.site_slogan),
       site_description: String(data.site_description ?? DEFAULT_SETTINGS.site_description),
       site_badge: String(data.site_badge ?? DEFAULT_SETTINGS.site_badge),
