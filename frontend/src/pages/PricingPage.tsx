@@ -90,11 +90,14 @@ const PricingPage: React.FC = () => {
   const [isAccepting, setIsAccepting] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Inject Stripe links from settings into plans
+  // Inject Stripe links AND dynamic prices from settings into plans
+  // Also filter by visibility settings
   const PLANS: Plan[] = BASE_PLANS.map(plan => {
     if (plan.id === 'pro') {
       return {
         ...plan,
+        monthlyPrice: parseFloat(settings.plan_pro_price_monthly || '9.99'),
+        yearlyPrice: parseFloat(settings.plan_pro_price_yearly || '99.99'),
         stripeMonthlyLink: settings.stripe_pro_monthly || undefined,
         stripeYearlyLink: settings.stripe_pro_yearly || undefined,
       };
@@ -102,11 +105,18 @@ const PricingPage: React.FC = () => {
     if (plan.id === 'enterprise') {
       return {
         ...plan,
+        monthlyPrice: parseFloat(settings.plan_enterprise_price_monthly || '29.99'),
+        yearlyPrice: parseFloat(settings.plan_enterprise_price_yearly || '299.99'),
         stripeMonthlyLink: settings.stripe_enterprise_monthly || undefined,
         stripeYearlyLink: settings.stripe_enterprise_yearly || undefined,
       };
     }
     return plan;
+  }).filter(plan => {
+    // Filter out hidden plans based on visibility settings
+    if (plan.id === 'pro' && settings.plan_pro_visible === false) return false;
+    if (plan.id === 'enterprise' && settings.plan_enterprise_visible === false) return false;
+    return true;
   });
 
   // Handle terms acceptance
