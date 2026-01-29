@@ -4,6 +4,7 @@ import "@/styles/globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { I18nProvider } from "@/context/I18nContext";
 import { ToastProvider } from "@/components/ui/Toast";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
@@ -15,6 +16,7 @@ import SessionPage from "@/pages/SessionPage";
 import PricingPage from "@/pages/PricingPage";
 import FeaturesPage from "@/pages/FeaturesPage";
 import LoginPage from "@/pages/LoginPage";
+import ChatBot from "@/components/ChatBot";
 
 // Global settings loader component
 const SiteSettingsLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
