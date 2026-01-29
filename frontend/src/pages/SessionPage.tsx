@@ -22,30 +22,8 @@ import { isSupabaseConfigured } from '@/lib/supabaseClient';
 // LocalStorage key for nickname
 const NICKNAME_STORAGE_KEY = 'bt_nickname';
 
-// Demo tracks for testing
-const DEMO_TRACKS: Track[] = [
-  {
-    id: 1,
-    title: 'Midnight Groove',
-    artist: 'Beattribe Collective',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    coverArt: '',
-  },
-  {
-    id: 2,
-    title: 'Urban Pulse',
-    artist: 'DJ Neon',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    coverArt: '',
-  },
-  {
-    id: 3,
-    title: 'Summer Vibes',
-    artist: 'The Rhythm Makers',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    coverArt: '',
-  },
-];
+// Empty playlist by default - users upload their own tracks
+const DEMO_TRACKS: Track[] = [];
 
 // Base mock participants (will be augmented with current user)
 const BASE_PARTICIPANTS: Participant[] = [
@@ -372,7 +350,7 @@ export const SessionPage: React.FC = () => {
   
   // Playlist state (draggable)
   const [tracks, setTracks] = useState<Track[]>(DEMO_TRACKS);
-  const [selectedTrack, setSelectedTrack] = useState(DEMO_TRACKS[0]);
+  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   
   // Participants state with volume/mute controls
   const [participantsState, setParticipantsState] = useState<Participant[]>(BASE_PARTICIPANTS);
