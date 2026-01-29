@@ -146,27 +146,25 @@ UPDATE profiles SET role = 'admin' WHERE email = 'admin@votredomaine.com';
 
 ## Mises à jour récentes (29 Jan 2026)
 
-### ✅ Suppression de Pistes (nouveau)
-1. **Suppression individuelle** - Icône Trash2 discrète (gris zinc-500) visible au survol
-2. **Mode sélection** - Bouton "Modifier" apparaît quand la playlist n'est pas vide
-3. **Suppression multiple** - Checkboxes + "Supprimer (n)" pour suppression groupée
-4. **Suppression Storage Supabase** - Fonction `deleteTracks()` supprime les fichiers physiques
-5. **Confirmation native** - `window.confirm()` avant chaque suppression
+### ✅ Badge Emergent SUPPRIMÉ DÉFINITIVEMENT
+- CSS `display: none !important` ajouté dans `index.html`
+- Script JS `removeEmergentBadge()` qui supprime le badge du DOM
+- Intervalle de 500ms pour s'assurer qu'il reste supprimé
 
-### ✅ Purge Branding & Données de Test
-1. **Badge "Made with Emergent" supprimé** - Retiré de `index.html`
-2. **Morceaux de test supprimés** - "Midnight Groove", "Urban Pulse", "Summer Vibes" retirés
-3. **Participants mock supprimés** - Sarah K., Alex M., Emma L. retirés
-4. **Playlist vide par défaut** - Les sessions démarrent sans pistes
+### ✅ Suppression de Pistes (UI Minimaliste)
+1. **Suppression individuelle** - Icône Trash2 (`text-zinc-500 opacity-70`) visible sur chaque piste
+2. **Mode sélection** - Bouton "Modifier" quand playlist non vide
+3. **Suppression multiple** - Checkboxes + "Supprimer (n)"
+4. **Suppression Storage Supabase** - `deleteTracks()` supprime DB + fichiers
 
-### ✅ Fix "Rejoindre la tribu"
-- Tunnel d'accès réparé : saisir un code → redirection vers `/session/[CODE]`
-- Fonctionne correctement pour les participants
+### ✅ Purge Données de Test
+- `DEMO_TRACKS = []` - Playlist vide par défaut
+- `BASE_PARTICIPANTS = []` - Pas de participants mock
+- Note: Les tracks existantes en DB Supabase doivent être supprimées manuellement via l'UI
 
-### ✅ Gestion Playlist Vide
-- Message "Playlist vide" affiché quand aucune piste
-- Instruction "Uploadez votre premier morceau pour démarrer la session"
-- Auto-sélection de la première piste uploadée
+### ✅ Configuration Domaine Production
+- OAuth redirect vers `https://www.boosttribe.pro` quand sur ce domaine
+- Reset password redirect configuré également
 
 ---
 
