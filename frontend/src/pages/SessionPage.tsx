@@ -481,7 +481,7 @@ export const SessionPage: React.FC = () => {
 
   // Auto-play effect: when a new track is set via autoplay, force play
   useEffect(() => {
-    if (autoPlayPending && selectedTrack.src === autoPlayPending) {
+    if (autoPlayPending && selectedTrack && selectedTrack.src === autoPlayPending) {
       const timer = setTimeout(() => {
         const audioEl = document.querySelector('audio');
         if (audioEl) {
@@ -493,11 +493,11 @@ export const SessionPage: React.FC = () => {
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [autoPlayPending, selectedTrack.src]);
+  }, [autoPlayPending, selectedTrack]);
 
   // Handle track ended - autoplay next track with sync
   const handleTrackEnded = useCallback(() => {
-    if (!isHost) return; // Only host controls autoplay
+    if (!isHost || !selectedTrack) return; // Only host controls autoplay
     
     // Safety check: playlist not empty
     if (tracks.length === 0) {
@@ -554,7 +554,7 @@ export const SessionPage: React.FC = () => {
         title: nextTrack.title
       });
     }
-  }, [isHost, tracks, selectedTrack.id, repeatMode, socket, showToast]);
+  }, [isHost, tracks, selectedTrack, repeatMode, socket, showToast]);
 
   // Join socket session when session ID is available
   useEffect(() => {
@@ -722,11 +722,11 @@ export const SessionPage: React.FC = () => {
     showToast('Playlist réorganisée', 'success');
     
     // Sync playlist to all participants
-    if (isHost) {
+    if (isHost && selectedTrack) {
       socket.syncPlaylist(newTracks, selectedTrack.id);
       console.log('[SOCKET OUT] Playlist sync:', { trackCount: newTracks.length });
     }
-  }, [showToast, isHost, socket, selectedTrack.id]);
+  }, [showToast, isHost, socket, selectedTrack]);
 
   // Track selection handler (syncs via socket)
   const handleTrackSelectWithSync = useCallback((track: Track) => {
@@ -747,17 +747,24 @@ export const SessionPage: React.FC = () => {
     }
     
     setTracks(prev => [...prev, newTrack]);
+    
+    // Auto-select first track if playlist was empty
+    if (!selectedTrack) {
+      setSelectedTrack(newTrack);
+    }
+    
     showToast(`🎵 "${newTrack.title}" ajouté à la playlist`, 'success');
     
     // Sync to participants
     const updatedTracks = [...tracks, newTrack];
-    socket.syncPlaylist(updatedTracks, selectedTrack.id);
+    const trackIdToSync = selectedTrack?.id || newTrack.id;
+    socket.syncPlaylist(updatedTracks, trackIdToSync);
     
     // Save to database if configured
-    socket.savePlaylistToDb(updatedTracks, selectedTrack.id);
+    socket.savePlaylistToDb(updatedTracks, trackIdToSync);
     
     console.log('[UPLOAD] Track added:', newTrack.title);
-  }, [tracks, selectedTrack.id, socket, showToast]);
+  }, [tracks, selectedTrack, socket, showToast]);
 
   // Initialize - check for stored nickname
   useEffect(() => {
