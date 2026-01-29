@@ -187,7 +187,7 @@ export const PlaylistDnD: React.FC<PlaylistDnDProps> = ({
                 <SortableTrackItem
                   key={track.id}
                   track={track}
-                  isSelected={selectedTrack.id === track.id}
+                  isSelected={selectedTrack?.id === track.id}
                   onSelect={onTrackSelect}
                   isHost={isHost}
                 />
