@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { Repeat, Repeat1 } from 'lucide-react';
 import { useAudioSync, AudioState, SyncState, RepeatMode } from '@/hooks/useAudioSync';
 
-// Format time helper
+// Format time helper - formats seconds into mm:ss
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
   const mins = Math.floor(seconds / 60);
@@ -10,8 +10,8 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Props interface
-interface AudioPlayerProps {
+// AudioPlayer Props interface - Updated with disabled prop for trial limit
+export interface AudioPlayerProps {
   src?: string;
   title?: string;
   artist?: string;
