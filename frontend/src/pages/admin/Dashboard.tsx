@@ -319,108 +319,98 @@ const Dashboard: React.FC = () => {
     setHasChanges(true);
   }, []);
 
-  // Save settings to Supabase - UPSERT SIMPLE sans refresh automatique
+  // Save settings to Supabase - CODE DIRECT ULTRA-SIMPLE
   const handleSave = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
-      showToast('Supabase non configuré', 'error');
+      alert('❌ Supabase non configuré');
       return;
     }
 
     setIsSaving(true);
     
-    try {
-      // Données à sauvegarder avec ID fixe = 1
-      const upsertData = {
-        id: 1,
-        site_name: settings.site_name,
-        site_slogan: settings.site_slogan,
-        site_description: settings.site_description,
-        site_badge: settings.site_badge,
-        favicon_url: settings.favicon_url || '',
-        color_primary: settings.color_primary,
-        color_secondary: settings.color_secondary,
-        color_background: settings.color_background,
-        btn_login: settings.btn_login,
-        btn_start: settings.btn_start,
-        btn_join: settings.btn_join,
-        btn_explore: settings.btn_explore,
-        stat_creators: settings.stat_creators,
-        stat_beats: settings.stat_beats,
-        stat_countries: settings.stat_countries,
-        stripe_pro_monthly: settings.stripe_pro_monthly || '',
-        stripe_pro_yearly: settings.stripe_pro_yearly || '',
-        stripe_enterprise_monthly: settings.stripe_enterprise_monthly || '',
-        stripe_enterprise_yearly: settings.stripe_enterprise_yearly || '',
-        // Plan visibility & pricing
-        plan_pro_visible: settings.plan_pro_visible,
-        plan_enterprise_visible: settings.plan_enterprise_visible,
-        plan_pro_price_monthly: settings.plan_pro_price_monthly || '9.99',
-        plan_pro_price_yearly: settings.plan_pro_price_yearly || '99.99',
-        plan_enterprise_price_monthly: settings.plan_enterprise_price_monthly || '29.99',
-        plan_enterprise_price_yearly: settings.plan_enterprise_price_yearly || '299.99',
-        default_language: settings.default_language || 'fr',
-      };
+    // Données à sauvegarder avec ID fixe = 1
+    const upsertData = {
+      id: 1,
+      site_name: settings.site_name,
+      site_slogan: settings.site_slogan,
+      site_description: settings.site_description,
+      site_badge: settings.site_badge,
+      favicon_url: settings.favicon_url || '',
+      color_primary: settings.color_primary,
+      color_secondary: settings.color_secondary,
+      color_background: settings.color_background,
+      btn_login: settings.btn_login,
+      btn_start: settings.btn_start,
+      btn_join: settings.btn_join,
+      btn_explore: settings.btn_explore,
+      stat_creators: settings.stat_creators,
+      stat_beats: settings.stat_beats,
+      stat_countries: settings.stat_countries,
+      stripe_pro_monthly: settings.stripe_pro_monthly || '',
+      stripe_pro_yearly: settings.stripe_pro_yearly || '',
+      stripe_enterprise_monthly: settings.stripe_enterprise_monthly || '',
+      stripe_enterprise_yearly: settings.stripe_enterprise_yearly || '',
+      plan_pro_visible: settings.plan_pro_visible,
+      plan_enterprise_visible: settings.plan_enterprise_visible,
+      plan_pro_price_monthly: settings.plan_pro_price_monthly || '9.99',
+      plan_pro_price_yearly: settings.plan_pro_price_yearly || '99.99',
+      plan_enterprise_price_monthly: settings.plan_enterprise_price_monthly || '29.99',
+      plan_enterprise_price_yearly: settings.plan_enterprise_price_yearly || '299.99',
+      default_language: settings.default_language || 'fr',
+    };
 
-      console.log('[CMS] DATA_SENT', upsertData);
+    console.log('[CMS] DATA_SENT', upsertData);
 
-      // UPSERT DIRECT - Client Supabase uniquement, pas de fetch manuel
-      const result = await supabase
-        .from('site_settings')
-        .upsert(upsertData, { onConflict: 'id' });
+    // CODE DIRECT SUPABASE - INTERDICTION de .json() ou .text()
+    const { data, error } = await supabase
+      .from('site_settings')
+      .upsert(upsertData, { onConflict: 'id' });
 
-      // Vérifier l'erreur SANS lire le body
-      if (result.error) {
-        console.error('[CMS] Supabase error:', result.error.message);
-        showToast(`Erreur DB: ${result.error.message}`, 'error');
-        setIsSaving(false);
-        return;
-      }
-
-      console.log('[CMS] ✅ UPSERT OK');
-      
-      // Mise à jour locale SANS appeler refreshSiteSettings
-      setSettings({ ...settings, id: '1' });
-      setOriginalSettings({ ...settings, id: '1' });
-      setHasChanges(false);
-      setDbStatus('connected');
-      
-      // Update theme context pour preview live
-      updateConfig({
-        name: settings.site_name,
-        slogan: settings.site_slogan,
-        description: settings.site_description,
-        badge: settings.site_badge,
-        colors: {
-          primary: settings.color_primary,
-          secondary: settings.color_secondary,
-          background: settings.color_background,
-          gradient: {
-            primary: `linear-gradient(135deg, ${settings.color_primary} 0%, ${settings.color_secondary} 100%)`,
-          },
-        },
-        buttons: {
-          login: settings.btn_login,
-          start: settings.btn_start,
-          joinTribe: settings.btn_join,
-          exploreBeats: settings.btn_explore,
-        },
-        stats: [
-          { value: settings.stat_creators, label: 'Créateurs' },
-          { value: settings.stat_beats, label: 'Beats partagés' },
-          { value: settings.stat_countries, label: 'Pays' },
-        ],
-      });
-      
-      showToast('✅ Sauvegarde réussie !', 'success');
-      
-    } catch (err) {
-      console.error('[CMS] Exception:', err);
-      // Ne pas afficher l'erreur détaillée pour éviter de lire le body
-      showToast('Erreur lors de la sauvegarde', 'error');
-    } finally {
+    if (error) {
+      console.error('[CMS] Supabase error:', error);
+      alert('❌ Erreur DB: ' + error.message);
       setIsSaving(false);
+      return;
     }
-  }, [settings, updateConfig, showToast]);
+
+    console.log('[CMS] ✅ UPSERT OK', data);
+    
+    // Mise à jour locale
+    setSettings({ ...settings, id: '1' });
+    setOriginalSettings({ ...settings, id: '1' });
+    setHasChanges(false);
+    setDbStatus('connected');
+    
+    // Update theme context
+    updateConfig({
+      name: settings.site_name,
+      slogan: settings.site_slogan,
+      description: settings.site_description,
+      badge: settings.site_badge,
+      colors: {
+        primary: settings.color_primary,
+        secondary: settings.color_secondary,
+        background: settings.color_background,
+        gradient: {
+          primary: `linear-gradient(135deg, ${settings.color_primary} 0%, ${settings.color_secondary} 100%)`,
+        },
+      },
+      buttons: {
+        login: settings.btn_login,
+        start: settings.btn_start,
+        joinTribe: settings.btn_join,
+        exploreBeats: settings.btn_explore,
+      },
+      stats: [
+        { value: settings.stat_creators, label: 'Créateurs' },
+        { value: settings.stat_beats, label: 'Beats partagés' },
+        { value: settings.stat_countries, label: 'Pays' },
+      ],
+    });
+    
+    setIsSaving(false);
+    alert('✅ Configuration sauvegardée !');
+  }, [settings, updateConfig]);
 
 
   // Reset to original
