@@ -7,59 +7,71 @@ PRODUCT REQUIREMENTS:
 3.  **Voice Chat (WebRTC)**: Implement real-time voice chat allowing the Host to speak over the music, with volume ducking.
 4.  **Monetization (Stripe)**: Implement a subscription model with different tiers (Free, Pro, Enterprise) and feature limitations for non-paying users. An Admin role should have unlimited access.
 5.  **Authentication (Supabase Auth)**: A full authentication system including email/password login, social login (Google), password reset, and user registration, integrated with the subscription status.
+6.  **Admin CMS**: A dashboard for the site administrator to manage site-wide settings like text, colors, and branding, persisted in the database.
 
 **User's preferred language**: Français
 
 **what currently exists?**
 The application is a full-stack React+TypeScript app using Supabase for its backend.
--   **Core Audio Features**: Drag-and-drop playlist, synchronized playback, MP3 upload to Supabase Storage, and autoplay/repeat modes are all functional.
--   **WebRTC Voice Chat**: A complete WebRTC feature using  is implemented. It handles microphone permissions, establishes a peer-to-peer connection, streams the host's audio to participants, and dynamically creates audio elements to play the incoming voice stream.
--   **Stripe Subscription System**: The full frontend logic for a subscription model is implemented. This includes a  page with monthly/annual toggles, different subscription plans, a mandatory Terms & Conditions checkbox, and role-based feature restrictions (e.g., free users can only upload 1 track).
--   **Supabase Authentication**: A comprehensive authentication system is in place. It includes pages and logic for Login, Signup, and Password Reset. It features an  that manages user session, profile data, and subscription status across the entire application. Routes are protected, and the UI dynamically changes based on auth state (e.g., showing login/logout buttons).
+-   **Core Audio Features**: Drag-and-drop playlist, synchronized playback, and autoplay/repeat modes are functional. MP3 upload is implemented but currently broken.
+-   **WebRTC Voice Chat**: A complete WebRTC feature using  for host-to-participant voice streaming is implemented and stable.
+-   **Stripe & Authentication**: A full authentication system (email/password, Google Auth) via Supabase is in place, managed by a heavily refactored . It supports role-based access control, with an admin role () having full privileges. The frontend for a Stripe subscription model is complete.
+-   **Admin CMS**: A new Admin Dashboard at  allows management of site-wide settings (name, slogan, colors, favicon). It reads from and writes to a new  table in Supabase, replacing the previous  implementation.
+-   **UI/UX**: A new  page with a modern grid layout has been created. The homepage has been cleaned up, and navigation has been updated accordingly.
 
 **Last working item**:
--   **Last item agent was working**: The agent was fixing critical authentication issues. The user reported that login was failing with a stream already read error and Google Auth was returning a 400 error. The agent correctly identified that the root cause was not the frontend code, but a misconfigured backend: the user's Supabase instance was missing the required  table, and the Google Auth provider was not enabled.
--   **Status**: USER VERIFICATION PENDING
+-   **Last item agent was working**: The agent was responding to an urgent user request to configure the production domain. The user wants to use , force SSL generation, and update Supabase OAuth redirect URLs to point to this new production domain instead of the dynamic preview URL. Before this, the agent attempted to fix a recurring body stream already read error that occurs during MP3 file uploads.
+-   **Status**: NOT STARTED
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: frontend testing agent. Once the user confirms the backend is set up, the agent must perform a full test of all authentication flows: email/password login, Google login, new user signup, and verify that the admin role is correctly assigned.
+-   **Which testing method agent to use?**: manual testing by curl. The agent cannot directly test domain or SSL configuration. The agent's task is to update the code to use the new production URL. After the code change, the user will need to verify their domain setup.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Supabase Backend Misconfiguration (P0)**
-    -   **Description**: The entire authentication system (login, signup, profiles, subscriptions) is non-functional because the user's Supabase database is missing the  table and the Google Auth provider is not enabled in their Supabase project settings. The agent has already created the necessary scripts and documentation to fix this.
-    -   **Attempted fixes**: The agent provided the user with two crucial files:
-        1.  : An SQL script to create the  table and a trigger that automatically creates a new profile for each new user.
-        2.  : A markdown file with step-by-step instructions for the user to enable the Google Auth provider in their Supabase dashboard.
+-   **Issue 1: Production Domain & SSL Configuration (P0)**
+    -   **Description**: The user wants to set up the production domain . They have configured their DNS and need the application to reflect this. The agent cannot directly manage DNS or SSL but must update the codebase to use the new, hardcoded production URL for all relevant redirects, especially for Supabase Google Auth.
+    -   **Attempted fixes**: None. This is a new request from the user.
     -   **Next debug checklist**:
-        1.  Confirm with the user that they have executed the script from  in their Supabase SQL editor.
-        2.  Confirm with the user that they have followed the instructions in  to enable Google Auth.
-        3.  After confirmation, test the login flow for the admin user ().
-        4.  Test the Google Auth login flow.
-        5.  Test the new user registration flow.
-    -   **Why fix this issue and what will be achieved with this?**: This is the primary blocker for the entire application. Fixing it will unlock all user management, authentication, and monetization features.
-    -   **Status**: USER VERIFICATION PENDING
+        1.  Acknowledge the user's request and clarify that the agent's role is limited to code changes.
+        2.  Search the codebase, particularly , for OAuth redirect URL configurations.
+        3.  Replace the dynamic  with the hardcoded production URL  where appropriate for production-level authentication flows.
+        4.  Inform the user that the code has been updated so they can complete their domain and SSL setup.
+    -   **Status**: NOT STARTED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on other issue**: This issue blocks all other progress.
+    -   **Blocked on other issue**: None. This is the highest priority.
+
+-   **Issue 2: MP3 Upload Fails with body stream already read (P1)**
+    -   **Description**: The user reported via screenshot that uploading MP3s consistently fails with a Failed to execute json on Response: body stream already read error.
+    -   **Attempted fixes**:
+        1.  The agent first simplified the Supabase SDK call, which did not resolve the issue.
+        2.  The agent then refactored  in  to bypass the Supabase SDK's upload method entirely and use the native  API directly with the raw file object. This was the most recent attempt before the user's domain configuration request.
+    -   **Next debug checklist**:
+        1.  Once the P0 domain issue is addressed, ask the user to re-test the MP3 upload functionality.
+        2.  If it still fails, the last attempted fix in  was incorrect. Revert it and try passing the file directly to  without any  or  conversion, as this has been a recurring point of failure.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None.
 
 **In progress Task List**:
--   None. The agent is blocked waiting for the user to configure their Supabase backend.
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **P1 - Convert All UI Components to TypeScript**: A recurring task to convert remaining  components in  to  for type safety and consistency.
+    -   **P1 - Convert All UI Components to TypeScript**: A recurring task to convert remaining  components in  to  for type safety.
 -   **Future Tasks**:
     -   **P2 - Implement Participant Request to Speak**: Extend the WebRTC feature to allow participants to request microphone access.
-    -   **P2 - Implement Host Nickname Management**: Allow the Host's nickname (currently hardcoded as Coach) to be editable.
+    -   **P2 - Implement Host Nickname Management**: Allow the Host's nickname to be editable.
     -   **P2 - Persist Theme via Supabase**: Migrate the UI theme settings from  to the user's profile in the Supabase  table.
     -   **P3 - Refactor **: This component is very large and manages a lot of state. It should be broken down into smaller, more manageable components and custom hooks.
 
 **Completed work in this session**
--   **WebRTC Voice Chat Implemented**: Fixed the microphone detection bug and successfully implemented the full end-to-end voice streaming from Host to Participants. The logic now correctly handles permissions, establishes a PeerJS connection, and dynamically plays the host's audio on the participant's side.
--   **Stripe Subscription System Implemented**: Built the complete frontend for a multi-tiered subscription model, including a pricing page, role-based access control, feature limitations for free users, and special privileges for an admin role.
--   **Full Supabase Authentication System**: Replaced a simple password gate with a comprehensive authentication solution (Login, Signup, Google Auth, Password Reset). Created a centralized  to manage user state, profile, and subscription status throughout the app, successfully merging and replacing the previous .
--   **Backend Configuration Fixes**: Diagnosed that login failures were due to a missing  table and disabled Google Auth provider. Created SQL scripts and markdown guides to empower the user to fix their own backend environment.
--   **UI Refactoring**: Overhauled the header to be auth-aware, and redesigned the pricing page with a monthly/annual toggle and improved layout.
+-   **Admin Dashboard CMS**: Created a full CMS at  for managing site settings (name, slogan, colors, favicon).
+-   **CMS DB Migration**: Migrated the CMS from  to a new  table in Supabase, creating the necessary SQL script.
+-   **Auth & Loading Fixes**: Resolved a critical infinite loading spinner by refactoring  to guarantee loading state completion and implementing an instant admin bypass based on email to improve user experience for the admin.
+-   **Features Page Creation**: Designed and built a new, modern  page with a 3x2 grid layout and added it to the site's navigation.
+-   **Host Privilege Fix**: Corrected logic in  to ensure the Admin user always has host controls, even when joining a session via a URL.
+-   **UI Cleanup**: Removed the Explorer les beats link from the homepage for a cleaner design.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Incomplete Conversion of  components to **
@@ -79,61 +91,61 @@ The application is a full-stack React+TypeScript app using Supabase for its back
 -   **Backend-as-a-Service**: Supabase (Auth, Realtime, Storage)
 -   **Styling**: Tailwind CSS, 
 -   **Voice Streaming**: WebRTC via 
--   **Monetization**: Stripe (Payment Links logic is in place)
--   **State Management**: React Context API (, ), React Hooks
+-   **State Management**: React Context API (), Custom Hooks ()
+-   **CMS Development**: Building a settings management UI that interacts directly with a Supabase table.
 
 **key DB schema**
 -   **profiles**: 
--   **Supabase Storage**: Public bucket  for MP3 files.
--   **Trigger**: A SQL trigger  exists to automatically insert a new row into  when a user signs up via Supabase Auth.
+-   **site_settings**:  **(NEW)**
+-   **Supabase Storage**: Public bucket .
 
 **changes in tech stack**
--   No new technologies were added, but the project now deeply relies on **Supabase Auth** for all user management and access control.
+-   None.
 
 **All files of reference**
--   : **Critical SQL script** the user must run to create the  table.
--   : **Critical instructions** for the user to enable Google Auth.
--   : The new central hub for all user, profile, and subscription state.
--   : The new entry point for all users.
--   : The core of the monetization flow.
--   : Contains the final, working logic for receiving and playing WebRTC audio streams.
+-   : The central hub for authentication logic, and the primary file to modify for the P0 domain change request.
+-   : Contains the  function, which is the focus of the upload bug.
+-   : The Admin CMS page.
+-   : SQL script required to set up the CMS database table. The user must run this.
 
 **Areas that need refactoring**:
--    is still overly complex and a candidate for being broken down into smaller components and hooks.
+-    remains overly complex and is a candidate for being broken down into smaller components.
+-    has been patched multiple times to fix emergent bugs; a structural refactor could simplify its logic.
 
 **key api endpoints**
--   All backend communication is handled through the Supabase SDK for Auth, Realtime, and Storage.
--   Stripe Payment Links (URLs to be configured by the user).
--   PeerJS server for WebRTC signaling.
+-   All backend communication is handled through the Supabase SDK. The agent's last attempt to fix the upload bug involved bypassing the SDK and using the  API to call the Supabase Storage endpoint directly.
 
 **Critical Info for New Agent**
--   **YOU ARE BLOCKED BY THE USER.** Do not proceed with any coding. Your first action must be to ask the user to confirm that they have completed the two setup steps outlined in  and .
--   The previous login errors were **not** a code issue but a **backend configuration issue**. Do not waste time debugging the  or  code. The provided SQL script and guide are the solution.
--   The old  is gone. All logic for user identity and subscription status is now consolidated in .
--   The old admin login ( page with password ) is obsolete. Admin access is now determined by the  column in the  table, tied to a real Supabase Auth user ().
+-   **PRIORITIZE THE DOMAIN CHANGE**: The user's most recent request is to update the application to use the production domain . Your first action should be to modify the code (especially in ) to use this hardcoded URL for OAuth redirects, then inform the user.
+-   **MP3 UPLOAD IS BROKEN**: The body stream already read error on file upload is a persistent, recurring issue. The last fix attempt in  is unverified and may be incorrect. Be prepared to debug this further.
+-   **ADMIN IS PRIORITY**: The user  must have a seamless experience. Logic has been added to give this user immediate admin/host rights, bypassing loading states and restrictions. Do not regress this behavior.
+-   **CMS REQUIRES DB MIGRATION**: The new Admin CMS at  will not work correctly until the user runs the SQL script located at  in their Supabase project. The UI has a fallback, but full functionality depends on this table.
 
 **documents and test reports created in this job**
--    (updated)
--    (created)
--    (created)
+-   
+-   
+-   
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Pending)**: Complained about login failing (stream error) and Google Auth not working. Requested a fix.
-2.  **Agent**: Implemented a full Supabase authentication system (Login, Signup, Google, etc.).
-3.  **User**: Requested the implementation of the authentication system.
-4.  **Agent**: Implemented the Stripe subscription system with admin privileges.
-5.  **User**: Requested the Stripe subscription system.
-6.  **Agent**: Implemented the participant-side logic for WebRTC voice streaming.
-7.  **User**: Requested that the host's voice be audible to participants.
-8.  **Agent**: Simplified the microphone permission flow to fix issues with user gestures.
-9.  **User**: Requested another attempt at fixing the microphone permission issue.
-10. **Agent**: Implemented the first major fix for the No microphone detected error.
+1.  **User (PENDING)**: Requested to force domain update to , generate SSL, and fix Supabase Auth redirects for this new domain.
+2.  **User**: Sent a screenshot showing the body stream already read error during MP3 upload and stated that the upload is not working.
+3.  **User**: Requested a fix for the MP3 upload body stream already read error.
+4.  **User**: Requested a complete rewrite of the  page with 6 new marketing points.
+5.  **User**: Requested to fix a crash in the CMS and remove the 'Explorer les beats' link from the homepage.
+6.  **User**: Requested to fix an infinite notification loop when going live in a session.
+7.  **User**: Requested to migrate the CMS from LocalStorage to a Supabase database.
+8.  **User**: Requested to fix an issue where the Admin did not have audio controls in a session.
+9.  **User**: Requested to restore the Admin Dashboard and fix an auth-related stream error.
+10. **User**: Requested a fix for an infinite loading spinner that was blocking the application.
 
 **Project Health Check:**
 -   **Broken**:
-    -   **Authentication System**: The entire login, signup, and profile system is currently non-functional because it depends on a backend database table () and provider configuration (Google Auth) that do not exist in the user's Supabase project. The frontend code is complete but cannot work without the backend changes.
+    -   **MP3 Upload**: Non-functional due to a recurring body stream already read error. A fix is implemented but is unverified.
+    -   **Production Domain/SSL**: The application is not yet configured to use the user's final production domain ().
 -   **Mocked**:
-    -   None.
+    -   The Admin Dashboard () contains placeholder UI for a user list and session statistics. The core site settings management is functional.
 
 **3rd Party Integrations**
 -   : Core backend for Auth, Realtime database, and Storage.
@@ -145,11 +157,10 @@ The application is a full-stack React+TypeScript app using Supabase for its back
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: []
+-   **Known regressions**: The MP3 upload feature was working at some point but has since regressed.
 
 **Credentials to test flow:**
--   The old admin access via  and the password  is **DEPRECATED AND WILL NOT WORK**.
--   **Admin User**: Once the user sets up the database using , the user with the email  will have the  role. This will be the new method for testing admin-only features.
+-   **Admin User**: . Login via Google Auth is the intended flow. This user should have immediate and full admin/host privileges across the application.
 
 **What agent forgot to execute**
--   The agent correctly prioritized user requests and did not forget any critical tasks. The long-term task of converting all  files to  remains on the backlog, which is appropriate given the scale of the features implemented in this session.</analysis>
+-   The agent has not yet acted on the user's most recent and highest-priority request to configure the application for the production domain .</analysis>
