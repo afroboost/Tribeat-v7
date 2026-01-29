@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -21,6 +21,41 @@ const SiteSettingsLoader: React.FC<{ children: React.ReactNode }> = ({ children 
   // This hook loads settings from Supabase and applies favicon/title globally
   useSiteSettings();
   return <>{children}</>;
+};
+
+// 🛡️ IFRAME EMERGENT KILLER - Masque toute iframe contenant 'emergent' dans l'URL
+const EmergentBlocker: React.FC = () => {
+  useEffect(() => {
+    const hideEmergentIframes = () => {
+      document.querySelectorAll('iframe').forEach((iframe) => {
+        const src = iframe.src || '';
+        if (src.toLowerCase().includes('emergent')) {
+          iframe.style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;width:0!important;height:0!important;position:absolute!important;left:-99999px!important;z-index:-99999!important;';
+        }
+      });
+      // Also hide any element with emergent in class/id
+      document.querySelectorAll('[class*="emergent"],[id*="emergent"]').forEach((el) => {
+        (el as HTMLElement).style.cssText = 'display:none!important;';
+      });
+    };
+
+    // Run immediately
+    hideEmergentIframes();
+
+    // Run periodically
+    const interval = setInterval(hideEmergentIframes, 500);
+
+    // MutationObserver for dynamic content
+    const observer = new MutationObserver(hideEmergentIframes);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      clearInterval(interval);
+      observer.disconnect();
+    };
+  }, []);
+
+  return null;
 };
 
 const HomePage: React.FC = () => {
@@ -48,6 +83,8 @@ const App: React.FC = () => {
           <AuthProvider>
             <SiteSettingsLoader>
               <SocketProvider>
+                {/* 🛡️ Blocker iframe emergent */}
+                <EmergentBlocker />
                 <div className="App">
                   <Routes>
                     <Route path="/" element={<HomePage />} />
