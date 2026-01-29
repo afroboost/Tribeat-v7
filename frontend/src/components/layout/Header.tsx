@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { LanguageSelector } from "@/context/I18nContext";
 import { LogOut, User, Settings } from "lucide-react";
 
 export const Header: React.FC = () => {
