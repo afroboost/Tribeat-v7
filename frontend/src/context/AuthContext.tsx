@@ -279,8 +279,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: { message: 'Supabase non configuré' } as AuthError };
     }
 
-    // Get the current origin - NEVER use localhost
-    const currentOrigin = window.location.origin;
+    // Production domain for OAuth redirects
+    const PRODUCTION_DOMAIN = 'https://www.boosttribe.pro';
+    
+    // Use production domain if we're on it, otherwise use current origin
+    const currentOrigin = window.location.hostname.includes('boosttribe.pro') 
+      ? PRODUCTION_DOMAIN 
+      : window.location.origin;
     const redirectUrl = `${currentOrigin}/session`;
     
     console.log('[AUTH] Google OAuth redirect URL:', redirectUrl);
