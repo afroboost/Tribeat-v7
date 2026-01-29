@@ -1,268 +1,132 @@
-# Beattribe - Product Requirements Document
+# Boosttribe - PRD (Product Requirements Document)
 
-## Vision
-**"Unite Through Rhythm"** - Application d'écoute musicale synchronisée en temps réel.
+## Vue d'ensemble
+Application web de sessions d'écoute musicale synchronisée. Permet à un hôte de créer une session, d'uploader de la musique, et d'inviter des participants pour une écoute en temps réel.
 
----
+## Stack Technique
+- **Frontend**: React 18 + TypeScript
+- **Backend**: Supabase (Auth, Database, Storage)
+- **WebRTC**: PeerJS pour la voix en temps réel
+- **UI Components**: Shadcn/UI + Tailwind CSS
 
-## Dernières Corrections - 29 Jan 2026 (Session 2) ✅
+## Fonctionnalités Implémentées
 
-### 🟢 CORRECTIONS AUTO-HEALING BASE DE DONNÉES
+### 1. Système d'Authentification
+- Connexion via Google (Supabase Auth)
+- Système admin (email: contact.artboost@gmail.com)
+- Protection des routes admin
 
-#### 1. Auto-insertion dans useSiteSettings.ts ✅
-- **Fichier**: `/app/frontend/src/hooks/useSiteSettings.ts`
-- Si la table `site_settings` existe mais est vide, insertion automatique d'une ligne par défaut
-- Évite les erreurs `TypeError` lors du chargement des paramètres
+### 2. Sessions d'Écoute
+- Création de sessions avec code unique
+- Upload de fichiers audio (MP3, WAV, AAC)
+- Lecture synchronisée pour tous les participants
+- Playlist drag-and-drop
 
-#### 2. Auto-insertion dans Admin Dashboard ✅
-- **Fichier**: `/app/frontend/src/pages/admin/Dashboard.tsx`
-- Si la table `site_settings` est vide, insertion automatique lors du chargement du CMS
-- Mode "auto-healing" : pas d'erreur affichée, fallback silencieux vers les défauts
+### 3. CMS Admin (/admin)
+- Gestion de l'identité du site (nom, slogan, description)
+- Palette de couleurs personnalisable
+- Configuration des liens Stripe
+- Gestion de la visibilité et prix des plans (Pro/Enterprise)
 
-#### 3. Modal Bloquant pour Limite 5 Minutes ✅
-- **Fichier**: `/app/frontend/src/pages/SessionPage.tsx`
-- Remplacé le simple message par un **modal en plein écran** (`fixed inset-0 z-50`)
-- Bloque toute interaction jusqu'à ce que l'utilisateur passe à Pro
-- Design avec icône, description des avantages Pro, et CTA visible
+### 4. Internationalisation (i18n)
+- Sélecteur de langue (🇫🇷 🇬🇧 🇩🇪)
+- Traductions pour FR, EN, DE
+- Visible sur toutes les pages
 
----
+### 5. ChatBot IA
+- Assistant flottant
+- Réservé aux membres PRO/Enterprise
+- Message de verrouillage pour utilisateurs gratuits
 
-## Corrections Précédentes - 29 Jan 2026 (Session 1) ✅
+## Changements - Session du 29/01/2025
 
-### 🟢 STRIPE & ESSAI GRATUIT - IMPLÉMENTÉ
+### Renommage Global
+- ✅ "Beattribe" → "Boosttribe" dans tous les fichiers
+- Fichiers modifiés :
+  - `index.html` (title, meta)
+  - `theme.json` (name)
+  - `Dashboard.tsx` (DEFAULT_SETTINGS)
+  - `useSiteSettings.ts` (DEFAULT_SETTINGS)
+  - `ChatBot.tsx` (messages du bot)
+  - `I18nContext.tsx` (localStorage key)
+  - `PricingPage.tsx`, `LoginPage.tsx`, `FeaturesPage.tsx`
 
-#### 5. Intégration Stripe - CONFIGURÉ ✅
-- **Fichier**: `/app/frontend/src/pages/PricingPage.tsx`
-- Les liens Stripe sont maintenant chargés depuis `site_settings` (Admin Dashboard)
-- Redirection directe vers Stripe (`window.open`) - **PAS D'ALERT**
-- Si liens non configurés, redirection vers URL par défaut
+### Fix CMS handleSave
+- ✅ Remplacement complet de la fonction
+- Utilisation de `supabase.upsert()` direct
+- Aucun appel `.json()` ou `.text()` sur la réponse
+- Alert "✅ Boosttribe synchronisé !" + reload
 
-#### 6. Essai Gratuit 5 Minutes - IMPLÉMENTÉ ✅
-- **Fichier**: `/app/frontend/src/pages/SessionPage.tsx`
-- Timer visible avec barre de progression pour utilisateurs non abonnés
-- Lecture automatiquement mise en pause après 300 secondes
-- Modal bloquant "Limite d'essai atteinte" avec CTA vers /pricing
-- Les utilisateurs abonnés ne voient pas le timer
+### Suppression Badge Emergent
+- ✅ CSS permanent dans `<head>` de index.html
+- Ciblage : iframe[src*="emergent"], #emergent-badge, etc.
 
-#### 7. Hook useSiteSettings - ÉTENDU ✅
-- **Fichier**: `/app/frontend/src/hooks/useSiteSettings.ts`
-- Ajout des champs `stripe_pro_monthly`, `stripe_pro_yearly`, `stripe_enterprise_monthly`, `stripe_enterprise_yearly`
+### LanguageSelector Unifié
+- ✅ Composant visible sur toutes les pages
+- Présent dans Header.tsx et Dashboard.tsx header
 
----
+### ChatBot Pro Restriction
+- ✅ Message "Assistant Boosttribe réservé aux membres PRO."
+- Accès bloqué pour utilisateurs non-Pro
 
-### 🔴 CORRECTIONS CRITIQUES APPLIQUÉES
+## Base de Données (Supabase)
 
-#### 1. Badge "Made with Emergent" - SUPPRIMÉ ✅
-- **Fichier**: `/app/frontend/public/index.html`
-- **Solution**: CSS agressif + JavaScript avec MutationObserver pour éliminer le badge injecté dynamiquement par le script externe
-- **Méthodes appliquées**:
-  - CSS `display: none !important` sur tous sélecteurs possibles
-  - JavaScript qui s'exécute toutes les 100ms pendant 10s, puis toutes les 500ms
-  - MutationObserver pour intercepter les insertions dynamiques
-
-#### 2. Playlist Vide par Défaut - CONFIRMÉ ✅
-- **Fichier**: `/app/frontend/src/pages/SessionPage.tsx`
-- `DEMO_TRACKS` est un tableau vide `[]`
-- Les pistes "Midnight Groove", "Urban Pulse", "Summer Vibes" vues dans la vidéo proviennent de la **base Supabase de l'utilisateur**, pas du code
-
-#### 3. UI de Suppression de Pistes - AMÉLIORÉE ✅
-- **Fichier**: `/app/frontend/src/components/audio/PlaylistDnD.tsx`
-- Icône Trash2 **toujours visible** avec couleur rouge/rose pour meilleure visibilité
-- Bouton "Modifier" avec style violet (#8A2EFF) pour meilleure visibilité et cohérence
-- `data-testid` et `aria-label` ajoutés pour les tests et accessibilité
-- Protection anti-undefined dans `SessionPage.tsx` pour la synchronisation playlist
-
-#### 4. Domaine de Production - CONFIGURÉ ✅
-- **Fichier**: `/app/frontend/src/context/AuthContext.tsx`
-- Redirections OAuth et reset password vers `https://www.boosttribe.pro`
-
----
-
-## État Actuel - AUTHENTIFICATION COMPLÈTE ✅
-
-### ✅ Implémentation Auth (28 Jan 2026)
-
-#### Architecture Auth Supabase
-```
-┌─────────────────────────────────────────────────┐
-│              AUTHENTIFICATION                   │
-│  • Email/Password                              │
-│  • Google OAuth                                │
-│  • Password Reset                              │
-│  • CGU obligatoires à l'inscription           │
-└─────────────────────────────────────────────────┘
-                      │
-┌─────────────────────────────────────────────────┐
-│              RÔLES & ABONNEMENTS               │
-│  • Admin : role='admin' dans table profiles    │
-│  • User : trial, monthly, yearly, enterprise   │
-│  • Accès illimité pour Admin (via DB)         │
-└─────────────────────────────────────────────────┘
-```
-
-### Fichiers Créés
-
-| Fichier | Description |
-|---------|-------------|
-| `/context/AuthContext.tsx` | Gestion auth Supabase, profils, rôles |
-| `/pages/LoginPage.tsx` | Page connexion/inscription/reset |
-| `/components/auth/RequireAuth.tsx` | Guard de route authentifié |
-
-### Fonctionnalités Auth
-
-#### 1. Page Login (/login)
-- Email + Mot de passe
-- Bouton "Se connecter avec Google"
-- Lien "Mot de passe oublié ?"
-- Toggle Login/Signup
-- Redirection vers page précédente après login
-
-#### 2. Page Signup
-- Nom complet
-- Email + Mot de passe (min 6 caractères)
-- **Checkbox CGU obligatoire** ✅
-- Confirmation email envoyée
-
-#### 3. Sécurisation Admin
+### Table: site_settings
 ```sql
--- L'admin n'est plus défini par mot de passe hardcodé
--- Il est défini par son email dans la table profiles
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY,
-  email TEXT,
-  role TEXT DEFAULT 'user', -- 'admin' pour les admins
-  subscription_status TEXT DEFAULT 'trial',
-  has_accepted_terms BOOLEAN DEFAULT FALSE
-);
-
--- Pour créer un admin :
-UPDATE profiles SET role = 'admin' WHERE email = 'votre@email.com';
+id: integer (PK, default: 1)
+site_name: text
+site_slogan: text
+site_description: text
+site_badge: text
+favicon_url: text
+color_primary: text
+color_secondary: text
+color_background: text
+btn_login, btn_start, btn_join, btn_explore: text
+stat_creators, stat_beats, stat_countries: text
+stripe_pro_monthly, stripe_pro_yearly: text
+stripe_enterprise_monthly, stripe_enterprise_yearly: text
+plan_pro_visible, plan_enterprise_visible: boolean
+plan_pro_price_monthly, plan_pro_price_yearly: text
+plan_enterprise_price_monthly, plan_enterprise_price_yearly: text
+default_language: text
+updated_at: timestamp
 ```
 
-#### 4. Navigation Protégée
-```typescript
-// Route protégée - redirige vers /login si non connecté
-<RequireAuth>
-  <SessionPage />
-</RequireAuth>
-
-// Admin bypass toutes les restrictions
-if (isAdmin) return true;
-```
-
-### UI Updates
-
-#### Header
-- **Non connecté** : Boutons "Connexion" + "Commencer"
-- **Connecté** : Avatar + Nom + Badge Admin + Bouton déconnexion
-- **"Communauté" supprimée** du menu ✅
-
-#### Page Pricing
-- **Toggle Mensuel/Annuel** avec badge "-17%"
-- **3 plans** : Essai Gratuit, Pro, Enterprise
-- Prix dynamiques selon période sélectionnée
-
-### Routes
-
-| Route | Protection | Description |
-|-------|------------|-------------|
-| `/` | Public | Page d'accueil |
-| `/login` | Public | Connexion/Inscription |
-| `/pricing` | Public | Tarifs |
-| `/session` | Auth Required | Créer une session |
-| `/session/:id` | Public | Rejoindre une session |
-| `/admin` | Password Protected | Dashboard admin |
-
-### Checklist ✅
-- [x] Login Email/Password
-- [x] Google OAuth
-- [x] Password Reset
-- [x] CGU à l'inscription
-- [x] Admin via DB (pas hardcodé)
-- [x] Redirection après login vers page précédente
-- [x] Toggle Mensuel/Annuel
-- [x] "Communauté" supprimé
-- [x] Build `yarn build` réussi
-- [x] WebRTC/Microphone NON MODIFIÉ ✅
-
-### Configuration Supabase Requise
-
+### Table: profiles
 ```sql
--- 1. Créer la table profiles
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
-  email TEXT,
-  full_name TEXT,
-  avatar_url TEXT,
-  role TEXT DEFAULT 'user',
-  subscription_status TEXT DEFAULT 'trial',
-  has_accepted_terms BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Activer Google Auth dans Supabase Dashboard
--- Settings > Authentication > Providers > Google
-
--- 3. Créer un admin
-UPDATE profiles SET role = 'admin' WHERE email = 'admin@votredomaine.com';
+id: uuid (FK → auth.users)
+full_name: text
+avatar_url: text
+subscription_status: text ('free', 'pro', 'enterprise')
+is_admin: boolean
 ```
 
-## Credentials
-- **Admin Legacy**: `/admin` → MDP: `BEATTRIBE2026` (pour le dashboard admin)
-- **Admin Real**: Utilisateur avec `role='admin'` dans la table `profiles`
+### Bucket: audio-tracks
+- Stockage des fichiers audio uploadés
+- Accès public pour la lecture
 
-## URLs
-- **Accueil**: `/`
-- **Login**: `/login`
-- **Tarifs**: `/pricing`
-- **Session**: `/session`
-- **Admin**: `/admin`
+## Tâches Restantes (Backlog)
 
-## Mises à jour récentes (29 Jan 2026)
+### P1 - Priorité Haute
+- [ ] Vérification utilisateur du fix CMS
+- [ ] Mise à jour des données Supabase pour refléter "Boosttribe"
 
-### ✅ Badge Emergent SUPPRIMÉ DÉFINITIVEMENT
-- CSS `display: none !important` ajouté dans `index.html`
-- Script JS `removeEmergentBadge()` qui supprime le badge du DOM
-- Intervalle de 500ms pour s'assurer qu'il reste supprimé
+### P2 - Fonctionnalités
+- [ ] Convertir composants UI restants en TypeScript
+- [ ] Implémenter "Request to Speak" pour participants
+- [ ] Gestion des pseudos par l'hôte
+- [ ] Persister le thème via Supabase
 
-### ✅ Suppression de Pistes (UI Minimaliste)
-1. **Suppression individuelle** - Icône Trash2 (`text-zinc-500 opacity-70`) visible sur chaque piste
-2. **Mode sélection** - Bouton "Modifier" quand playlist non vide
-3. **Suppression multiple** - Checkboxes + "Supprimer (n)"
-4. **Suppression Storage Supabase** - `deleteTracks()` supprime DB + fichiers
+### P3 - Refactoring
+- [ ] Découper SessionPage.tsx en composants plus petits
+- [ ] Nettoyer les imports non utilisés
 
-### ✅ Purge Données de Test
-- `DEMO_TRACKS = []` - Playlist vide par défaut
-- `BASE_PARTICIPANTS = []` - Pas de participants mock
-- Note: Les tracks existantes en DB Supabase doivent être supprimées manuellement via l'UI
+## Credentials Test
+- Admin: contact.artboost@gmail.com (Google Auth)
+- Supabase: Configuré via .env
 
-### ✅ Configuration Domaine Production
-- OAuth redirect vers `https://www.boosttribe.pro` quand sur ce domaine
-- Reset password redirect configuré également
-
----
-
-## Tâches Restantes
-
-### P0 - En attente de configuration utilisateur
-- [ ] Configuration domaine `www.boosttribe.pro`
-- [ ] Mise à jour des redirect URLs OAuth dans Supabase
-
-### P1 - Bugs à vérifier
-- [ ] Upload MP3 (erreur "body stream already read" - fix en attente de validation)
-- [ ] Créer table `profiles` dans Supabase
-- [ ] Activer Google Auth Provider
-
-### P2 - Stripe
-- [ ] Créer Payment Links dans Stripe Dashboard
-- [ ] Webhook pour mettre à jour `subscription_status`
-
-### P3 - Backlog
-- [ ] Dashboard utilisateur (historique, factures)
-- [ ] Analytics abonnements
-- [ ] Refactoriser SessionPage.tsx
-- [ ] Convertir composants UI en TypeScript
-
----
-*Dernière mise à jour: 29 Jan 2026 - Purge branding et données de test*
+## Notes Importantes
+- ⚠️ Ne pas toucher la logique d'upload audio (bucket 'audio-tracks')
+- ⚠️ Ne pas toucher le système d'authentification
+- ⚠️ Le nom "Boosttribe" dans l'UI dépend des données Supabase
