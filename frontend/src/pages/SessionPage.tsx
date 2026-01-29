@@ -22,16 +22,9 @@ import { isSupabaseConfigured, deleteTracks } from '@/lib/supabaseClient';
 // LocalStorage key for nickname
 const NICKNAME_STORAGE_KEY = 'bt_nickname';
 
-// Single demo track to demonstrate delete UI - user can delete this manually
-const DEMO_TRACKS: Track[] = [
-  {
-    id: 1,
-    title: '🗑️ Cliquez pour supprimer ce titre de démo',
-    artist: 'Piste de démonstration',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    coverArt: '',
-  },
-];
+// Empty playlist by default - users upload their own tracks
+// Delete icons (🗑️) appear on each track when playlist has items
+const DEMO_TRACKS: Track[] = [];
 
 // Empty participants list - real participants will join via session link
 const BASE_PARTICIPANTS: Participant[] = [];
