@@ -50,6 +50,43 @@ const DEFAULT_SETTINGS: SiteSettings = {
   stripe_enterprise_yearly: '',
 };
 
+/**
+ * Safely merge DB data with defaults to prevent TypeError on missing columns
+ * Any missing column returns empty string instead of crashing
+ */
+function safeSettings(data: Record<string, unknown> | null): SiteSettings {
+  if (!data) return DEFAULT_SETTINGS;
+  
+  try {
+    return {
+      id: String(data.id ?? ''),
+      site_name: String(data.site_name ?? DEFAULT_SETTINGS.site_name),
+      site_slogan: String(data.site_slogan ?? DEFAULT_SETTINGS.site_slogan),
+      site_description: String(data.site_description ?? DEFAULT_SETTINGS.site_description),
+      site_badge: String(data.site_badge ?? DEFAULT_SETTINGS.site_badge),
+      favicon_url: String(data.favicon_url ?? ''),
+      color_primary: String(data.color_primary ?? DEFAULT_SETTINGS.color_primary),
+      color_secondary: String(data.color_secondary ?? DEFAULT_SETTINGS.color_secondary),
+      color_background: String(data.color_background ?? DEFAULT_SETTINGS.color_background),
+      btn_login: String(data.btn_login ?? DEFAULT_SETTINGS.btn_login),
+      btn_start: String(data.btn_start ?? DEFAULT_SETTINGS.btn_start),
+      btn_join: String(data.btn_join ?? DEFAULT_SETTINGS.btn_join),
+      btn_explore: String(data.btn_explore ?? DEFAULT_SETTINGS.btn_explore),
+      stat_creators: String(data.stat_creators ?? DEFAULT_SETTINGS.stat_creators),
+      stat_beats: String(data.stat_beats ?? DEFAULT_SETTINGS.stat_beats),
+      stat_countries: String(data.stat_countries ?? DEFAULT_SETTINGS.stat_countries),
+      // Stripe - SAFE: returns empty string if column missing
+      stripe_pro_monthly: String(data.stripe_pro_monthly ?? ''),
+      stripe_pro_yearly: String(data.stripe_pro_yearly ?? ''),
+      stripe_enterprise_monthly: String(data.stripe_enterprise_monthly ?? ''),
+      stripe_enterprise_yearly: String(data.stripe_enterprise_yearly ?? ''),
+    };
+  } catch (err) {
+    console.warn('[SiteSettings] safeSettings error:', err);
+    return DEFAULT_SETTINGS;
+  }
+}
+
 // Global cache for settings
 let cachedSettings: SiteSettings | null = null;
 let isLoading = false;
@@ -132,7 +169,8 @@ export function useSiteSettings() {
           }
 
           console.log('[SiteSettings] ✅ Default row inserted successfully');
-          cachedSettings = insertedData as SiteSettings;
+          // Use safeSettings to prevent TypeError on missing columns
+          cachedSettings = safeSettings(insertedData);
           return cachedSettings;
         }
 
@@ -143,7 +181,8 @@ export function useSiteSettings() {
         }
 
         console.log('[SiteSettings] ✅ Loaded from Supabase:', data.site_name);
-        cachedSettings = data as SiteSettings;
+        // Use safeSettings to prevent TypeError on missing columns
+        cachedSettings = safeSettings(data);
         return cachedSettings;
       } catch (err) {
         console.warn('[SiteSettings] Error loading:', err);
