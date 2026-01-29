@@ -20,6 +20,7 @@ interface Particle {
 export const HeroSection: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { t } = useI18n();
   const { showToast } = useToast();
   const { name, slogan, description, badge, colors, fonts, buttons, stats, scrollIndicator } = theme;
 
