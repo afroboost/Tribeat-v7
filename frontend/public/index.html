@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,79 +7,26 @@
         <meta name="description" content="Boosttribe - Unite Through Rhythm. La communauté des beatmakers et producteurs." />
         <title>Boosttribe</title>
         
-        <!-- BADGE KILLER CSS - PERMANENT -->
-        <style>iframe[src*="emergent"], #emergent-badge { display: none !important; visibility: hidden !important; pointer-events: none !important; }</style>
-        
-        <!-- IFRAME EMERGENT KILLER - Priority 1 -->
-        <style>iframe[src*="emergent"] { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; position: absolute !important; left: -99999px !important; }</style>
-        
-        <!-- FORCE BRUTE: BADGE KILLER CSS - MAXIMUM PRIORITY -->
-        <style id="emergent-nuke">
-            /* Target ALL possible badge selectors with maximum specificity */
+        <!-- BADGE KILLER CSS PERMANENT - Solution unique consolidée -->
+        <style>
+            iframe[src*="emergent"], 
             #emergent-badge,
             .emergent-badge,
-            .emergent-indicator,
             [id*="emergent"],
             [class*="emergent"],
-            [data-emergent],
-            a[href*="emergent"],
-            div[style*="Made with"],
-            *[style*="emergent"],
-            body > div:last-child,
-            body > a:last-child {
+            a[href*="emergent"] {
                 display: none !important;
                 visibility: hidden !important;
-                opacity: 0 !important;
                 pointer-events: none !important;
+                opacity: 0 !important;
                 width: 0 !important;
                 height: 0 !important;
-                max-width: 0 !important;
-                max-height: 0 !important;
-                overflow: hidden !important;
                 position: absolute !important;
                 left: -99999px !important;
-                top: -99999px !important;
-                z-index: -99999 !important;
-                transform: scale(0) !important;
-                clip: rect(0, 0, 0, 0) !important;
-            }
-            /* Kill ANY fixed position element at bottom right */
-            body > *[style*="fixed"],
-            body > *[style*="bottom"],
-            body > *[style*="right"] {
-                display: none !important;
             }
         </style>
         
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
-        
-        <!-- IMMEDIATE BADGE INTERCEPT - Runs before badge can render -->
-        <script>
-            (function() {
-                // Override appendChild to intercept badge injection
-                var originalAppendChild = Element.prototype.appendChild;
-                Element.prototype.appendChild = function(child) {
-                    if (child && child.id && child.id.toLowerCase().includes('emergent')) {
-                        console.log('[BLOCKED] Emergent element injection');
-                        return child;
-                    }
-                    if (child && child.textContent && child.textContent.includes('Made with') && child.textContent.includes('Emergent')) {
-                        console.log('[BLOCKED] Made with Emergent text');
-                        return child;
-                    }
-                    return originalAppendChild.call(this, child);
-                };
-                
-                // Override insertBefore too
-                var originalInsertBefore = Element.prototype.insertBefore;
-                Element.prototype.insertBefore = function(newNode, refNode) {
-                    if (newNode && newNode.id && newNode.id.toLowerCase().includes('emergent')) {
-                        return newNode;
-                    }
-                    return originalInsertBefore.call(this, newNode, refNode);
-                };
-            })();
-        </script>
         
         <script>
             // Only load visual edit scripts when inside an iframe
@@ -95,101 +42,12 @@
                 tailwindScript.src = 'https://cdn.tailwindcss.com';
                 document.head.appendChild(tailwindScript);
             }
-            
-            // NUCLEAR BADGE REMOVAL - runs continuously
-            (function() {
-                function killBadge() {
-                    // Method 1: Direct ID removal
-                    var badge = document.getElementById('emergent-badge');
-                    if (badge) { badge.parentNode.removeChild(badge); }
-                    
-                    // Method 2: Query all possible selectors
-                    var selectors = [
-                        '#emergent-badge',
-                        '.emergent-badge', 
-                        '[id*="emergent"]',
-                        '[class*="emergent"]',
-                        'a[href*="emergent"]',
-                        '[data-emergent]'
-                    ];
-                    selectors.forEach(function(sel) {
-                        try {
-                            document.querySelectorAll(sel).forEach(function(el) {
-                                el.parentNode.removeChild(el);
-                            });
-                        } catch(e) {}
-                    });
-                    
-                    // Method 3: Find by text content "Made with Emergent"
-                    document.querySelectorAll('a, div, span').forEach(function(el) {
-                        if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
-                            el.parentNode.removeChild(el);
-                        }
-                    });
-                    
-                    // Method 4: Find fixed position elements at bottom
-                    document.querySelectorAll('body > *').forEach(function(el) {
-                        var style = window.getComputedStyle(el);
-                        if (style.position === 'fixed' && style.bottom !== 'auto' && parseInt(style.bottom) < 50) {
-                            var text = el.textContent || '';
-                            if (text.includes('Emergent') || text.includes('Made with')) {
-                                el.parentNode.removeChild(el);
-                            }
-                        }
-                    });
-                }
-                
-                // Run immediately
-                killBadge();
-                
-                // Run on DOM ready
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', killBadge);
-                }
-                
-                // Run on window load
-                window.addEventListener('load', killBadge);
-                
-                // Run every 100ms for 10 seconds, then every 500ms
-                var count = 0;
-                var interval = setInterval(function() {
-                    killBadge();
-                    count++;
-                    if (count > 100) {
-                        clearInterval(interval);
-                        setInterval(killBadge, 500);
-                    }
-                }, 100);
-                
-                // MutationObserver to catch dynamic insertions
-                var observer = new MutationObserver(function(mutations) {
-                    killBadge();
-                });
-                
-                function startObserver() {
-                    if (document.body) {
-                        observer.observe(document.body, { childList: true, subtree: true });
-                    } else {
-                        setTimeout(startObserver, 10);
-                    }
-                }
-                startObserver();
-            })();
         </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
-        <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+        
         <script>
             !(function (t, e) {
                 var o, n, p, r;
@@ -254,56 +112,11 @@
             })(document, window.posthog || []);
             posthog.init("phc_xAvL2Iq4tFmANRE7kzbKwaSqp1HJjN7x48s3vr0CMjs", {
                 api_host: "https://us.i.posthog.com",
-                person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
+                person_profiles: "identified_only",
                 session_recording: {
                     recordCrossOriginIframes: true,
                 },
             });
         </script>
-        
-        <!-- FALLBACK BADGE KILLER - Runs after all other scripts -->
-        <script>
-            // Final cleanup for any badge that escaped earlier removal
-            function _killEmergentBadge() {
-                var targets = [
-                    '#emergent-badge',
-                    '.emergent-badge',
-                    '.emergent-indicator',
-                    '[id*="emergent"]',
-                    '[class*="emergent"]'
-                ];
-                targets.forEach(function(sel) {
-                    try {
-                        document.querySelectorAll(sel).forEach(function(el) {
-                            el.style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;';
-                            if (el.parentNode) el.parentNode.removeChild(el);
-                        });
-                    } catch(e) {}
-                });
-                
-                // Scan for text "Made with Emergent"
-                document.querySelectorAll('body *').forEach(function(el) {
-                    try {
-                        if (el.textContent && el.textContent.includes('Made with') && el.textContent.includes('Emergent')) {
-                            el.style.cssText = 'display:none!important;';
-                            if (el.parentNode) el.parentNode.removeChild(el);
-                        }
-                    } catch(e) {}
-                });
-            }
-            
-            // Run immediately
-            _killEmergentBadge();
-            
-            // Re-run on any mutation
-            if (typeof MutationObserver !== 'undefined' && document.body) {
-                new MutationObserver(function() {
-                    _killEmergentBadge();
-                }).observe(document.body, { childList: true, subtree: true });
-            }
-        </script>
-        
-        <!-- KILL BADGE AGRESSIF - setInterval 300ms -->
-        <script>setInterval(() => { document.querySelectorAll('iframe[src*="emergent"]').forEach(el => el.remove()); }, 300);</script>
     </body>
 </html>
