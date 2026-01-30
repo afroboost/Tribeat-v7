@@ -209,9 +209,14 @@ const PricingPage: React.FC = () => {
   const getDisplayPrice = (plan: Plan) => {
     if (plan.monthlyPrice === 0) return 'Gratuit';
     const price = billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-    // Témoin vert (●) si le prix vient de Supabase
-    const indicator = plan.isFromSupabase ? ' ●' : '';
-    return `${price}€${indicator}`;
+    return `${price}€`;
+  };
+  
+  // Témoin vert si le prix vient de Supabase
+  const getSupabaseIndicator = (plan: Plan) => {
+    return plan.isFromSupabase ? (
+      <span className="text-green-400 ml-1" title="Prix synchronisé avec Supabase">●</span>
+    ) : null;
   };
 
   // Get savings for yearly
