@@ -667,6 +667,43 @@ export const SessionPage: React.FC = () => {
     if (!sessionId || !supabase || !isSupabaseConfigured) return;
     
     console.log('📡 [SYSTEM] Boosttribe Sync Active');
+    setIsSyncActive(true);
+    
+    // 📡 FETCH INITIAL: Charger la playlist existante AVANT d'écouter les changements
+    async function fetchInitialPlaylist() {
+      if (isHost) return; // L'hôte gère sa propre playlist
+      
+      try {
+        console.log('📡 [DATA] Fetching initial playlist for session:', sessionId);
+        const { data, error } = await supabase
+          .from('playlists')
+          .select('tracks')
+          .eq('session_id', sessionId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('📡 [ERROR] Failed to fetch playlist:', error.message);
+          return;
+        }
+        
+        if (data && data.tracks && Array.isArray(data.tracks)) {
+          console.log('📡 [DATA] Playlist chargée pour le participant :', data.tracks.length);
+          setTracks(data.tracks as Track[]);
+          
+          // Sélectionner la première piste si aucune n'est sélectionnée
+          if (data.tracks.length > 0 && !selectedTrack) {
+            setSelectedTrack(data.tracks[0] as Track);
+          }
+        } else {
+          console.log('📡 [DATA] Aucune playlist trouvée pour cette session');
+        }
+      } catch (err) {
+        console.error('📡 [ERROR] Exception fetching playlist:', err);
+      }
+    }
+    
+    // Exécuter le fetch initial
+    fetchInitialPlaylist();
     
     // Subscribe to playlist changes - écoute INSERT et UPDATE explicitement
     const channel = supabase
@@ -721,9 +758,10 @@ export const SessionPage: React.FC = () => {
 
     return () => {
       console.log('📡 [REALTIME] Unsubscribing from session:', sessionId);
+      setIsSyncActive(false);
       supabase.removeChannel(channel);
     };
-  }, [sessionId, isHost, showToast]);
+  }, [sessionId, isHost, showToast, selectedTrack]);
 
   // Build participants list with current user
   const participants = useMemo<Participant[]>(() => {
