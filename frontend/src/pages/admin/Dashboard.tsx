@@ -359,7 +359,8 @@ const Dashboard: React.FC = () => {
       if (error) { 
         alert("ERREUR DB : " + error.message); 
       } else { 
-        alert("✅ SYNCHRO RÉUSSIE : Données écrites dans Supabase !"); 
+        // Témoin de fonctionnement avec timestamp précis
+        alert("✅ SYNCHRO RÉUSSIE ! Nom : " + dataToSave.site_name + " | Date : " + new Date().toLocaleTimeString());
         // Rafraîchir le cache global des settings pour tous les composants
         refreshSiteSettings();
         // Recharger la page pour appliquer les changements visuels

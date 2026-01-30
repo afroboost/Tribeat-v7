@@ -189,6 +189,9 @@ export function useSiteSettings() {
           .limit(1)
           .maybeSingle();
 
+        // 📡 TÉMOIN DE DÉBOGAGE - Affiche les données reçues de Supabase
+        console.log('📡 Données Boosttribe reçues de Supabase:', data);
+
         // Step 2: If no data exists, INSERT default row
         if (!data && !error) {
           console.log('[SiteSettings] Table empty, inserting default row...');
