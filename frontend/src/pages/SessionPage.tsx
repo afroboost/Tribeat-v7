@@ -666,14 +666,15 @@ export const SessionPage: React.FC = () => {
   useEffect(() => {
     if (!sessionId || !supabase || !isSupabaseConfigured) return;
     
-    // Log du mode actif
+    // Log du mode actif avec message clair
     if (isHost) {
-      console.log('📡 [SYNC] Mode Hôte : Contrôle total activé');
+      console.log('📡 [SYNC] Mode Hôte : Contrôle total activé (upload, suppression, réorganisation)');
     } else {
-      console.log('📡 [SYNC] Mode Participant : Lecture seule activée');
+      console.log('📡 [SYNC] Mode Participant activé : Lecture seule');
+      console.log('📡 [INFO] Les boutons de suppression et d\'upload sont masqués');
     }
     
-    console.log('📡 [SYSTEM] Boosttribe Sync Active');
+    console.log('📡 [SYSTEM] Boosttribe Sync Active - Session:', sessionId);
     setIsSyncActive(true);
     
     // 📡 FETCH INITIAL: Charger la playlist existante AVANT d'écouter les changements
