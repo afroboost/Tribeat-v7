@@ -38,39 +38,24 @@ Application web de sessions d'écoute musicale synchronisée. Permet à un hôte
 - Réservé aux membres PRO/Enterprise
 - Message de verrouillage pour utilisateurs gratuits
 
-## Changements - Session du 29/01/2025
+## Changements - Session du 30/01/2025
 
-### Renommage Global "Boosttribe"
-- ✅ "Beattribe" → "Boosttribe" dans tous les fichiers source
-- ✅ **NOUVEAU** : Force "Boosttribe" dans `useSiteSettings.ts` même si Supabase contient "Beattribe"
-- Fichiers modifiés :
-  - `index.html` (title, meta description)
-  - `theme.json` (name)
-  - `Dashboard.tsx` (DEFAULT_SETTINGS, handleSave)
-  - `useSiteSettings.ts` (DEFAULT_SETTINGS + safeSettings force override)
-  - `ChatBot.tsx` (messages du bot)
-  - `I18nContext.tsx` (localStorage key)
-  - `ThemeContext.tsx` (force name override)
-  - `PricingPage.tsx`, `LoginPage.tsx`, `FeaturesPage.tsx`
+### Dynamisation des Composants
+- ✅ **PricingPage.tsx** : Les prix (Pro, Enterprise) sont récupérés dynamiquement depuis `site_settings`
+- ✅ **HeroSection.tsx** : Le nom du site vient de `theme.name` qui est alimenté par Supabase
+- ✅ **Système de rafraîchissement global** ajouté dans `useSiteSettings.ts`
 
-### Fix CMS handleSave - CONNEXION RÉELLE SUPABASE
-- ✅ Utilisation de `supabase.from('site_settings').upsert()` direct
-- ✅ Force `site_name: 'Boosttribe'` en premier dans l'upsert
-- ✅ Messages d'alerte : "ERREUR RÉELLE DB : ..." ou "✅ RÉUSSITE : Les données sont maintenant dans Supabase !"
-- ✅ Aucun appel `.json()` ou `.text()` sur la réponse
+### Rafraîchissement Auto après Save CMS
+- ✅ Ajouté `onSettingsRefresh()` - système d'événements pour notifier les composants
+- ✅ `refreshSiteSettings()` appelé après un upsert réussi dans Dashboard.tsx
+- ✅ Tous les composants utilisant `useSiteSettings()` se rechargent automatiquement
 
-### Suppression Badge Emergent
-- ✅ CSS permanent dans `<head>` de index.html
-- Ciblage : iframe[src*="emergent"], #emergent-badge, etc.
+### Fix Auth Redirect URLs (pour déploiement)
+- ✅ Supprimé domaine hardcodé `https://www.boosttribe.pro`
+- ✅ Remplacé par `window.location.origin` dynamique
 
-### LanguageSelector Unifié
-- ✅ Composant visible sur TOUTES les pages (Homepage, Admin, Session)
-- ✅ Hors de toute condition `if(user)` ou `if(admin)`
-- Présent dans Header.tsx (ligne 121) et Dashboard.tsx header (ligne 429)
-
-### ChatBot Pro Restriction
-- ✅ Message "Assistant Boosttribe réservé aux membres PRO." pour utilisateurs non-Pro
-- Accès bloqué si `subscription_status !== 'pro'`
+### Optimisation Backend
+- ✅ Pagination ajoutée à `/api/status` (limit=100, skip=0)
 
 ## Base de Données (Supabase)
 
