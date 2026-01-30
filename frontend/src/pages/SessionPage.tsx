@@ -1451,11 +1451,22 @@ export const SessionPage: React.FC = () => {
                     Playlist de l'hôte
                   </CardTitle>
                   <CardDescription className="text-white/50">
-                    Mode lecture seule • {tracks.length} titre{tracks.length > 1 ? 's' : ''}
+                    Mode lecture seule - Synchronisé avec l'hôte
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {/* Read-only playlist for participants */}
+                  {/* Indicator bar */}
+                  <div className="mb-3 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <p className="text-green-400 text-xs flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                      {tracks.length} titre{tracks.length > 1 ? 's' : ''} synchronisé{tracks.length > 1 ? 's' : ''} en temps réel
+                    </p>
+                  </div>
+                  
+                  {/* Read-only playlist for participants - NO delete buttons, NO drag handles */}
                   <PlaylistDnD
                     tracks={tracks}
                     selectedTrack={selectedTrack}
