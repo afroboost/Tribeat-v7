@@ -398,6 +398,7 @@ const PricingPage: React.FC = () => {
                   <span className="text-4xl font-bold text-white">
                     {getDisplayPrice(plan)}
                   </span>
+                  {getSupabaseIndicator(plan)}
                   {plan.monthlyPrice > 0 && (
                     <span className="text-white/50 text-sm">
                       /{billingPeriod === 'monthly' ? 'mois' : 'an'}
