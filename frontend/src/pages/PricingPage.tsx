@@ -92,6 +92,10 @@ const PricingPage: React.FC = () => {
 
   // Inject Stripe links AND dynamic prices from settings into plans
   // Also filter by visibility settings
+  // isFromSupabase = true si les prix NE sont PAS les valeurs par défaut hardcodées
+  const isProPriceFromDB = settings.plan_pro_price_monthly !== '9.99' || isLoaded;
+  const isEnterprisePriceFromDB = settings.plan_enterprise_price_monthly !== '29.99' || isLoaded;
+  
   const PLANS: Plan[] = BASE_PLANS.map(plan => {
     if (plan.id === 'pro') {
       return {
@@ -100,6 +104,7 @@ const PricingPage: React.FC = () => {
         yearlyPrice: parseFloat(settings.plan_pro_price_yearly || '99.99'),
         stripeMonthlyLink: settings.stripe_pro_monthly || undefined,
         stripeYearlyLink: settings.stripe_pro_yearly || undefined,
+        isFromSupabase: isProPriceFromDB,
       };
     }
     if (plan.id === 'enterprise') {
@@ -109,9 +114,10 @@ const PricingPage: React.FC = () => {
         yearlyPrice: parseFloat(settings.plan_enterprise_price_yearly || '299.99'),
         stripeMonthlyLink: settings.stripe_enterprise_monthly || undefined,
         stripeYearlyLink: settings.stripe_enterprise_yearly || undefined,
+        isFromSupabase: isEnterprisePriceFromDB,
       };
     }
-    return plan;
+    return { ...plan, isFromSupabase: false };
   }).filter(plan => {
     // Filter out hidden plans based on visibility settings
     if (plan.id === 'pro' && settings.plan_pro_visible === false) return false;
