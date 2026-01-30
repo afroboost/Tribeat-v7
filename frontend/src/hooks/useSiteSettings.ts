@@ -130,11 +130,18 @@ let loadPromise: Promise<SiteSettings> | null = null;
 export function useSiteSettings() {
   const [settings, setSettings] = useState<SiteSettings>(cachedSettings || DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(!!cachedSettings);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { updateConfig } = useTheme();
 
   // Load settings from Supabase (singleton pattern)
   // IMPORTANT: If table is empty, insert default row automatically
-  const loadSettings = useCallback(async (): Promise<SiteSettings> => {
+  const loadSettings = useCallback(async (forceRefresh = false): Promise<SiteSettings> => {
+    // Clear cache if force refresh
+    if (forceRefresh) {
+      cachedSettings = null;
+      loadPromise = null;
+    }
+    
     // Return cached if available
     if (cachedSettings) {
       return cachedSettings;
