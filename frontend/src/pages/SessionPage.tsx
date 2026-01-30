@@ -18,6 +18,7 @@ import { generateSessionId } from '@/hooks/useAudioSync';
 import { usePeerAudio } from '@/hooks/usePeerAudio';
 import type { AudioState, SyncState, RepeatMode } from '@/hooks/useAudioSync';
 import { isSupabaseConfigured, deleteTracks } from '@/lib/supabaseClient';
+import supabase from '@/lib/supabaseClient';
 
 // LocalStorage key for nickname
 const NICKNAME_STORAGE_KEY = 'bt_nickname';
