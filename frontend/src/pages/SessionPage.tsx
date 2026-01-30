@@ -1365,6 +1365,19 @@ export const SessionPage: React.FC = () => {
                   </div>
                 )}
                 
+                {/* 🎧 Bandeau Mode Participant */}
+                {!isHost && (
+                  <div className="mb-4 px-4 py-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🎧</span>
+                      <div>
+                        <p className="text-purple-300 font-medium text-sm">Mode écoute seule - Synchronisé avec l'hôte</p>
+                        <p className="text-white/50 text-xs">La lecture est contrôlée par l'hôte de la session</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <AudioPlayer
                   src={selectedTrack.src}
                   title={selectedTrack.title}
