@@ -279,10 +279,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: { message: 'Supabase non configuré' } as AuthError };
     }
 
-    // Use dynamic origin for OAuth redirects (compatible with any domain)
-    const redirectUrl = `${window.location.origin}/session`;
+    // 🔒 VERROUILLAGE DOMAINE PRODUCTION - Force toujours boosttribe.pro
+    const PRODUCTION_URL = 'https://boosttribe.pro';
+    const redirectUrl = `${PRODUCTION_URL}/session`;
     
-    console.log('[AUTH] Google OAuth redirect URL:', redirectUrl);
+    console.log('[AUTH] Google OAuth redirect URL (LOCKED):', redirectUrl);
 
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -339,9 +340,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: { message: 'Supabase non configuré' } as AuthError };
     }
 
-    // Use dynamic origin for password reset (compatible with any domain)
+    // 🔒 VERROUILLAGE DOMAINE PRODUCTION - Force toujours boosttribe.pro
+    const PRODUCTION_URL = 'https://boosttribe.pro';
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${PRODUCTION_URL}/reset-password`,
     });
 
     return { error };

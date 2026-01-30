@@ -665,37 +665,61 @@ export const SessionPage: React.FC = () => {
   useEffect(() => {
     if (!sessionId || !supabase || !isSupabaseConfigured) return;
     
-    // Subscribe to playlist changes in real-time
+    console.log('📡 [SYSTEM] Boosttribe Sync Active');
+    
+    // Subscribe to playlist changes - écoute INSERT et UPDATE explicitement
     const channel = supabase
       .channel(`playlist:${sessionId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'playlists',
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          console.log('📡 [SUPABASE REALTIME] Playlist update:', payload);
-          
-          if (payload.new && typeof payload.new === 'object' && 'tracks' in payload.new) {
-            const newTracks = (payload.new as { tracks: Track[] }).tracks || [];
-            console.log('📡 [SUPABASE REALTIME] Syncing', newTracks.length, 'tracks');
-            
-            // Update local state only for participants (not host)
-            if (!isHost) {
-              setTracks(newTracks);
-              showToast('🎵 Playlist mise à jour', 'default');
-            }
-          }
+          console.log('📡 [REALTIME] INSERT detected:', payload);
+          handlePlaylistUpdate(payload);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'playlists',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          console.log('📡 [REALTIME] UPDATE detected:', payload);
+          handlePlaylistUpdate(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 [SUPABASE REALTIME] Channel status:', status);
+        console.log('📡 [REALTIME] Channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('📡 [SYSTEM] Boosttribe Sync Ready - Listening on session:', sessionId);
+        }
       });
+    
+    // Handler commun pour INSERT et UPDATE
+    function handlePlaylistUpdate(payload: unknown) {
+      const data = payload as { new?: { tracks?: Track[] } };
+      if (data.new && 'tracks' in data.new) {
+        const newTracks = data.new.tracks || [];
+        console.log('📡 [REALTIME] Syncing', newTracks.length, 'tracks to participant');
+        
+        // Update local state only for participants (not host)
+        if (!isHost) {
+          setTracks(newTracks);
+          showToast('🎵 Playlist mise à jour', 'default');
+        }
+      }
+    }
 
     return () => {
+      console.log('📡 [REALTIME] Unsubscribing from session:', sessionId);
       supabase.removeChannel(channel);
     };
   }, [sessionId, isHost, showToast]);
