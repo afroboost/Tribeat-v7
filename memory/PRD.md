@@ -40,22 +40,24 @@ Application web de sessions d'écoute musicale synchronisée. Permet à un hôte
 
 ## Changements - Session du 30/01/2025
 
-### Dynamisation des Composants
-- ✅ **PricingPage.tsx** : Les prix (Pro, Enterprise) sont récupérés dynamiquement depuis `site_settings`
-- ✅ **HeroSection.tsx** : Le nom du site vient de `theme.name` qui est alimenté par Supabase
-- ✅ **Système de rafraîchissement global** ajouté dans `useSiteSettings.ts`
+### Synchronisation Temps Réel Supabase
+- ✅ Ajouté souscription `postgres_changes` sur table `playlists` dans SessionPage.tsx
+- ✅ Les participants voient les musiques de l'hôte instantanément (sans F5)
+- ✅ Console.log "📡 [SUPABASE REALTIME] Playlist update:" pour debug
 
-### Rafraîchissement Auto après Save CMS
-- ✅ Ajouté `onSettingsRefresh()` - système d'événements pour notifier les composants
-- ✅ `refreshSiteSettings()` appelé après un upsert réussi dans Dashboard.tsx
-- ✅ Tous les composants utilisant `useSiteSettings()` se rechargent automatiquement
+### Verrouillage Domaine
+- ✅ Auth redirects utilisent `window.location.origin` (compatible boosttribe.pro)
+- ✅ Pas de domaine hardcodé dans le code
 
-### Fix Auth Redirect URLs (pour déploiement)
-- ✅ Supprimé domaine hardcodé `https://www.boosttribe.pro`
-- ✅ Remplacé par `window.location.origin` dynamique
+### Nettoyage Interface
+- ✅ Supprimé témoins visuels (●) de PricingPage.tsx
+- ✅ Supprimé propriété `isFromSupabase` de l'interface Plan
+- ✅ LanguageSelector avec z-index=50 pour visibilité garantie
 
-### Optimisation Backend
-- ✅ Pagination ajoutée à `/api/status` (limit=100, skip=0)
+### Dynamisation Composants
+- ✅ PricingPage.tsx : Prix récupérés depuis `site_settings`
+- ✅ HeroSection.tsx : Nom du site vient de `theme.name`
+- ✅ Système de rafraîchissement global après save CMS
 
 ## Base de Données (Supabase)
 
